@@ -94,8 +94,30 @@ Navigate to [http://localhost:3000](http://localhost:3000).
 
 That's it!
 
+## Creating New Flex Flows
 
-## Setting up canned responses
+A new Flex Flow is needed in order to create a Whatsapp task without the need of a Studio flow. Luckily, Flex allows you to keep two Flows, one with `Studio` and other with `Task` as the `integrationType`. Execute the API call below in order to create your new flex Flow
+
+    ```
+    curl -X POST \
+      https://flex-api.twilio.com/v1/FlexFlows \
+      --data-urlencode "ChannelType=whatsapp" \
+      --data-urlencode "IntegrationType=task" \
+      --data-urlencode "Enabled=false" \
+      --data-urlencode "FriendlyName=Flex WhatsApp To Task Flow" \
+      --data-urlencode "ContactIdentity=+1888XXXXXXX" \
+      --data-urlencode "ChatServiceSid=ISXXXXXX" \
+      --data-urlencode "Integration.WorkspaceSid=WSXXXXXX" \
+      --data-urlencode "Integration.WorkflowSid=WWXXXXXX" \
+      --data-urlencode "Integration.Channel=TCXXXXXX \
+      --data-urlencode "LongLived=false" \
+      --data-urlencode "JanitorEnabled=true" \
+    -u ACXXXXXX:XXXXXXX
+    ```
+
+**IMPORTANT**: You must keep this flow _disabled_, or Flex will find a conflict. The flow is still going to work for that purpose.
+
+## Setting Up Canned Responses
 
 Due to WhatsApp limitations when proactively contacting end users, it is best for agents to send the first message by using a pre-defined message using the **Canned Responses** component included in this plugin. There are two important steps to register new WhatsApp templates
 
