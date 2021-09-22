@@ -40,8 +40,8 @@ class CannedResponses extends React.Component {
             onChange={this.handleChange}
             name="response"
           >
-            <MenuItem value="Hello! We're reaching out to talk to you about your request. Please reply with YES to talk to one of our agents.">Greeting</MenuItem>
-            <MenuItem value={`Hello. I'm ${this.manager.workerClient.attributes.full_name} and I'm responsible for your request with us. Please reply with YES to engage in a conversation with us.`}>Personal Greeting</MenuItem>
+            <MenuItem value="This is my first canned response.">Canned Response 1</MenuItem>
+            <MenuItem value="This is my second canned response.">Canned Response 2</MenuItem>
             <MenuItem value="This is my third canned response.">Canned Response 3</MenuItem>
           </Select>
         </FormControl>

@@ -52,7 +52,7 @@ After the above requirements have been met:
 
 - Deploy your Twilio function
 
- ```bash
+ ```
 cd serverless
 
 ? Copy the Environment Variables example file to .env
@@ -66,7 +66,7 @@ twilio serverless:deploy
 
 - Deploy your Twilio Plugin
 
- ```bash
+ ```
 cd ..
 
 ? Copy the Environment Variables example file to .env
@@ -94,6 +94,44 @@ Navigate to [http://localhost:3000](http://localhost:3000).
 
 That's it!
 
+
+## Setting up canned responses
+
+Due to WhatsApp limitations when proactively contacting end users, it is best for agents to send the first message by using a pre-defined message using the **Canned Responses** component included in this plugin. There are two important steps to register new WhatsApp templates
+
+### Registering WhatsApp templates
+
+You can follow our [official documentation](https://www.twilio.com/docs/whatsapp/tutorial/send-whatsapp-notification-messages-templates) to better understand how to register new WhatsApp Templates
+
+### Using templates in the Flex Component
+
+The **Canned Responses** component was created using a static `MenuList`, so in order to make your template available for agents you will need to change the `src/components/CannedResponses/CannedResponses.jsx` file, by adding a new `MenuItem` to the `render` method, like the example below:
+
+  ```typescript
+render() {
+    return (
+
+      /* Rendering canned responses. This is an example in which templates are hard-coded. They can be dynamic using Twilio Sync */
+      <CannedResponsesStyles>
+        <FormControl className="form">
+          <InputLabel className="input-label" htmlFor="response">Canned Responses</InputLabel>
+          <Select
+            value={this.state.response}
+            onChange={this.handleChange}
+            name="response"
+          >
+            <MenuItem value="Hello! We're reaching out to talk to you about your request. Please reply with YES to talk to one of our agents.">Greeting</MenuItem>
+            <MenuItem value={`Hello. I'm ${this.manager.workerClient.attributes.full_name} and I'm responsible for your request with us. Please reply with YES to engage in a conversation with us.`}>Personal Greeting</MenuItem>
+            <MenuItem value="This is my third canned response.">Canned Response 3</MenuItem>
+          </Select>
+        </FormControl>
+      </CannedResponsesStyles>
+    )
+  }
+};
+```
+
+**IMPORTANT**: Remember to replace the placeholders for actual variables in your code. In the example above, we're replacing it for the agent's full name.
 
 ## Development
 
