@@ -1,8 +1,7 @@
 const { v4: uuidv4 } = require('uuid');
 const TokenValidator = require('twilio-flex-token-validator').functionValidator;
 
-exports.handler = async function(context, event, callback) {
-//exports.handler = TokenValidator(async (context, event, callback) => {
+exports.handler = TokenValidator(async (context, event, callback) => {
 
   const {
     ACCOUNT_SID, 
@@ -310,4 +309,4 @@ exports.handler = async function(context, event, callback) {
   console.log(response);
 
   return callback(null, response);
-};
+});

@@ -1,5 +1,5 @@
 import React from 'react';
-import { VERSION, Actions } from '@twilio/flex-ui';
+import { VERSION, Actions, NotificationManager } from '@twilio/flex-ui';
 import { FlexPlugin } from 'flex-plugin';
 import NewWaTaskButton  from './components/NewWaTaskButton';
 import OutboundWaDialog from './components/OutboundWaDialog/OutboundWaDialog';
@@ -7,6 +7,7 @@ import CannedResponses from './components/CannedResponses/CannedResponses';
 
 
 import reducers, { namespace } from './states';
+import { Notifications } from '@twilio/flex-ui-core';
 
 const PLUGIN_NAME = 'OutboundWhatsappPlugin';
 
@@ -25,36 +26,49 @@ export default class OutboundWhatsappPlugin extends FlexPlugin {
   init(flex, manager) {
     this.registerReducers(manager);
 
+    /*Outbound WhatsApp button*/
     flex.MainHeader.Content.add(<NewWaTaskButton key="outbound-whatsapp-button"/>, {sortOrder: -999, align: 'end'})
 
+    /*Custom action to dispatch an event and open the modal screen*/
     flex.Actions.registerAction("waModalControl", (payload) => {
       var event = new Event("waModalControlOpen");
       document.dispatchEvent(event);
       return Promise.resolve();
     });
 
+    /*Outbound Whatsapp Dialog */
     flex.MainContainer.Content.add(<OutboundWaDialog key="imageModal" />, {
       sortOrder: 1
+    });
+
+    /*Notification registration for task creation*/
+
+    flex.Notifications.registerNotification({
+      id: "waTaskCreated",
+      closeButton: true,
+      content: "Outbound Whatsapp task created. The customer has not yet been messaged. Please contact him using one of the pre-registered templates.",
+      timeout: 5000,
+      type: "information"
     });
 
     /* Agent auto-responses */
 
     flex.MessageInput.Content.add(<CannedResponses key="canned-responses" />);
-
-    manager.chatClient.on('channelJoined', payload => {
-      console.log('Channel Joined');
-      console.log(payload);
-    });
+  
     
+    /* Register event listener for new reservations so Flex will auto-accept outbound tasks */
     manager.workerClient.on('reservationCreated', payload => {
       
 
       const { sid , task } = payload;
 
-      console.log(task);
+      console.log(task.attributes);
+
 
       if(task.attributes.channelType === 'whatsapp' && task.attributes.direction === 'outbound'){
         console.log('New outbound task received');
+
+        flex.Notifications.showNotification("waTaskCreated", null);
         
         flex.Actions.invokeAction('AcceptTask', {
           sid
@@ -64,14 +78,6 @@ export default class OutboundWhatsappPlugin extends FlexPlugin {
           sid
         });
 
-         // define a message to send into the channel once the task is automatically accepted - if you wish for the agent to select a message instead of sending it automatically, just remove this piece of code
-
-        let body = `Hello! We're reaching out to talk to you about your request. Please reply with YES to talk to one of our agents.`;
-
-        flex.Actions.invokeAction('SendMessage', {
-          channelSid: task.attributes.channelSid,
-          body: body
-        });
       }
 
     });

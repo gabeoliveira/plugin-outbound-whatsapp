@@ -1,6 +1,6 @@
 import React from 'react';
 import { connect } from 'react-redux';
-import { Actions, withTheme, } from '@twilio/flex-ui';
+import { Actions, withTheme, Manager} from '@twilio/flex-ui';
 import FormControl from '@material-ui/core/FormControl';
 import InputLabel from '@material-ui/core/InputLabel';
 import Select from '@material-ui/core/Select';
@@ -17,6 +17,8 @@ class CannedResponses extends React.Component {
     }
   }
 
+  manager = Manager.getInstance();
+
   handleChange = (event) => {
     this.setState({ [event.target.name]: event.target.value });
 
@@ -28,6 +30,8 @@ class CannedResponses extends React.Component {
 
   render() {
     return (
+
+      /* Rendering canned responses. This is an example in which templates are hard-coded. They can be dynamic using Twilio Sync */
       <CannedResponsesStyles>
         <FormControl className="form">
           <InputLabel className="input-label" htmlFor="response">Canned Responses</InputLabel>
@@ -36,8 +40,8 @@ class CannedResponses extends React.Component {
             onChange={this.handleChange}
             name="response"
           >
-            <MenuItem value="This is my first canned response.">Canned Response 1</MenuItem>
-            <MenuItem value="This is my second canned response.">Canned Response 2</MenuItem>
+            <MenuItem value="Hello! We're reaching out to talk to you about your request. Please reply with YES to talk to one of our agents.">Greeting</MenuItem>
+            <MenuItem value={`Hello. I'm ${this.manager.workerClient.attributes.full_name} and I'm responsible for your request with us. Please reply with YES to engage in a conversation with us.`}>Personal Greeting</MenuItem>
             <MenuItem value="This is my third canned response.">Canned Response 3</MenuItem>
           </Select>
         </FormControl>

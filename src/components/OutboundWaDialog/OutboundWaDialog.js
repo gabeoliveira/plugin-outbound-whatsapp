@@ -3,6 +3,7 @@ import Dialog from "@material-ui/core/Dialog";
 import DialogContent from "@material-ui/core/DialogContent";
 import Button from '@material-ui/core/Button'
 import { withTheme, Actions } from "@twilio/flex-ui";
+import * as Flex from "@twilio/flex-ui";
 import { Container , Title , Label, ContactData} from "./OutboundWaDialog.styles";
 import taskService from "../../services/TaskService";
 
@@ -42,12 +43,10 @@ class OutboundWaDialog extends React.Component {
 
   setPhone(phoneNumber) {
     this.setState({phoneNumber});
-
-    console.log(this.state);
   }
 
   createTask(){
-    Actions.invokeAction('SetActivity',{activitySid: 'WA36691a2e1c0abd7671ce38a734386227', activityAvailable:true})
+    Actions.invokeAction('SetActivity',{activitySid: taskService.availableActivitySid});
     taskService.createTask(this.state.phoneNumber);
     this.setState({open: false});
   }
