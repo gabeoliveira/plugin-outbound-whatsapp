@@ -148,11 +148,14 @@ MIT © Twilio Inc.
 
 ## Credits
 
-This plugin was based on the [media-message plugin](https://github.com/twilio-labs/plugin-media-messages). Many thanks to the original contributors:
-* [jprix](https://github.com/jprix)
-* [Terence Rogers](https://github.com/trogers-twilio)
-* [Brad McAllister](https://github.com/bdm1981)
-* [Vinicius Miguel](https://github.com/vmiguelsilva)
+This plugin was based on the [function-flex-outbound-sms](https://github.com/twilio-professional-services/function-flex-outbound-sms) and the [plugin-agent-autoresponse](https://github.com/twilio-labs/plugin-agent-autoresponse). Many thanks to the original contributors:
+
+* [Alice Cai](https://github.com/ahcai)
+* [Dominik Kundel](https://github.com/dkundel)
+* [John Fischelli](https://github.com/johnfischelli)
+* [Kousha Talebian](https://github.com/ktalebian)
+* [lhamoudi](https://github.com/lhamoudi)
+
 
 ## License
 
