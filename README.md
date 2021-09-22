@@ -98,7 +98,7 @@ That's it!
 
 A new Flex Flow is needed in order to create a Whatsapp task without the need of a Studio flow. Luckily, Flex allows you to keep two Flows, one with `Studio` and other with `Task` as the `integrationType`. Execute the API call below in order to create your new flex Flow
 
-    ```
+    
     curl -X POST \
       https://flex-api.twilio.com/v1/FlexFlows \
       --data-urlencode "ChannelType=whatsapp" \
@@ -113,7 +113,7 @@ A new Flex Flow is needed in order to create a Whatsapp task without the need of
       --data-urlencode "LongLived=false" \
       --data-urlencode "JanitorEnabled=true" \
     -u ACXXXXXX:XXXXXXX
-    ```
+    
 
 **IMPORTANT**: You must keep this flow _disabled_, or Flex will find a conflict. The flow is still going to work for that purpose.
 
