@@ -35,14 +35,16 @@ To deploy this plugin, you will need:
 Before we begin, we need to collect
 all the config values we need to run the plugin on your Flex application:
 
-| Config&nbsp;Value | Description                                                                                                                                                  |
-| :---------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Account&nbsp;Sid  | Your primary Twilio account identifier - find this [on the Console Dashboard](https://www.twilio.com/console).                                                         |
-| Auth Token  | Your Twilio Auth Token, which acts as your password - find this [on the Console Dashboard](https://www.twilio.com/console).                                                         |
-| Chat Service SID | Unique identifier for your Flex Chat Service. You can find this on the [Programmable Chat Dashboard](https://www.twilio.com/console/chat/dashboard).                                    |
-| Twilio WhatsApp Number | The WhatsApp number to use when sending messages to a WhatsApp recipient. You can find this either on the [Twilio Sandbox for WhatsApp page](https://www.twilio.com/console/sms/whatsapp/learn) if you're using a test number, or the [WhatsApp Senders](https://www.twilio.com/console/sms/whatsapp/senders) if you've enabled personalized WhatsApp numbers.                                  |
-| Proxy Service SID | Unique identifier for a Flex Proxy Service. You can check this in the [Proxy Dashboard](https://console.twilio.com/us1/develop/proxy/services).    |
-| TaskRouter Agent Available Activity SID | The unique identifier for the Agent Available Activity. Used to set the agent activity as online when creating the Outbound Task. You can find this in [TaskRouter Dashboard](https://console.twilio.com/us1/service/taskrouter/), by accessing your **Flex Workspace**, then **Activities**   |
+| Config&nbsp;Value                       | Description                                                                                                                                                                                                                                                                                                                                                    |
+| :-------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Account&nbsp;Sid                        | Your primary Twilio account identifier - find this [on the Console Dashboard](https://www.twilio.com/console).                                                                                                                                                                                                                                                 |
+| Auth Token                              | Your Twilio Auth Token, which acts as your password - find this [on the Console Dashboard](https://www.twilio.com/console).                                                                                                                                                                                                                                    |
+| Chat Service SID                        | Unique identifier for your Flex Chat Service. You can find this on the [Programmable Chat Dashboard](https://www.twilio.com/console/chat/dashboard).                                                                                                                                                                                                           |
+| Twilio WhatsApp Number                  | The WhatsApp number to use when sending messages to a WhatsApp recipient. You can find this either on the [Twilio Sandbox for WhatsApp page](https://www.twilio.com/console/sms/whatsapp/learn) if you're using a test number, or the [WhatsApp Senders](https://www.twilio.com/console/sms/whatsapp/senders) if you've enabled personalized WhatsApp numbers. |
+| Proxy Service SID                       | Unique identifier for a Flex Proxy Service. You can check this in the [Proxy Dashboard](https://console.twilio.com/us1/develop/proxy/services).                                                                                                                                                                                                                |
+| TaskRouter Agent Available Activity SID | The unique identifier for the Agent Available Activity. Used to set the agent activity as online when creating the Outbound Task. You can find this in [TaskRouter Dashboard](https://console.twilio.com/us1/service/taskrouter/), by accessing your **Flex Workspace**, then **Activities**                                                                   |
+| TaskRouter Workspace SID | Your Flex Workspace automatically created for routing purposes. Obtainable [here](https://console.twilio.com/us1/develop/taskrouter/workspaces?frameUrl=%2Fconsole%2Ftaskrouter%2Fworkspaces%3Fx-target-region%3Dus1). |
+| Chat Channel SID | The unique identifier for the Chat Task Channel. You can fin this in the [TaskRouter Dashboard](https://console.twilio.com/us1/develop/taskrouter/workspaces?frameUrl=/console/taskrouter/workspaces), then **Task Channels**  |
 
 ### Deployment
 
@@ -93,6 +95,15 @@ twilio flex:plugins:start
 Navigate to [http://localhost:3000](http://localhost:3000).
 
 That's it!
+
+## Configuring Workflow to Route Task to Specific Worker
+
+If you need to deliver the created task to a specific agent (i.e. most likely the agent who performed the action that initiated the SMS task being created), then you will have included their worker SID in the targetWorkerSid parameter of your function REST API call.
+
+To complete the necessary workflow routing, you can add a filter to your Workflow to look for this task attribute, and act upon it using [Known Agent Routing](https://www.twilio.com/docs/taskrouter/workflow-configuration/known-agent-routing). See example filter below.
+
+![Known Agent Routing](img/known-agent-routing.png)
+
 
 ## Creating New Flex Flows
 
