@@ -1,6 +1,6 @@
 import React from 'react';
-import { VERSION, Actions, NotificationManager } from '@twilio/flex-ui';
-import { FlexPlugin } from 'flex-plugin';
+import { VERSION } from '@twilio/flex-ui';
+import { FlexPlugin } from '@twilio/flex-plugin';
 import NewWaTaskButton  from './components/NewWaTaskButton';
 import OutboundWaDialog from './components/OutboundWaDialog/OutboundWaDialog';
 import CannedResponses from './components/CannedResponses/CannedResponses';

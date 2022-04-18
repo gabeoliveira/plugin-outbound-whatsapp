@@ -7,10 +7,11 @@
   },
   "dependencies": {
     "axios": "^0.21.4",
-    "flex-plugin-scripts": "4.0.1",
     "mui": "^0.0.1",
     "react": "16.5.2",
-    "react-dom": "16.5.2"
+    "react-dom": "16.5.2",
+    "@twilio/flex-plugin-scripts": "5.0.6",
+    "react-emotion": "9.2.12"
   },
   "devDependencies": {
     "@twilio/flex-ui": "^1",
