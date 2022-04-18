@@ -62,18 +62,19 @@ class OutboundWaDialog extends React.Component {
       >
         <DialogContent>
             <Container>
-                <Title>Whatsapp Outbound Messages</Title>
+                <Title>Enviar mensagem por Whatsapp</Title>
                 <ContactData>
-                    <Label>Whatsapp Number (international format)</Label>
+                    <Label>Número</Label>
                     <input type="text" id="phoneNumber"
+                        placeholder="DDD + Número"
                         onChange={e => this.setPhone(e.target.value)}
                         onBlur={(e) => {
-                            this.setPhone(e.target.value);
+                            this.setPhone('+55' + e.target.value);
                           }}    
                     />
                 </ContactData>
                 <div>
-                    <Button variant="contained" color="secondary" onClick={this.createTask} >Create Task</Button>
+                    <Button variant="contained" color="secondary" onClick={this.createTask} >Enviar</Button>
                 </div>
             </Container>
         </DialogContent>
