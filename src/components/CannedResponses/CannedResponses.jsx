@@ -34,15 +34,15 @@ class CannedResponses extends React.Component {
       /* Rendering canned responses. This is an example in which templates are hard-coded. They can be dynamic using Twilio Sync */
       <CannedResponsesStyles>
         <FormControl className="form">
-          <InputLabel className="input-label" htmlFor="response">Canned Responses</InputLabel>
+          <InputLabel className="input-label" htmlFor="response">Respostas predefinidas</InputLabel>
           <Select
             value={this.state.response}
             onChange={this.handleChange}
             name="response"
           >
-            <MenuItem value="This is my first canned response.">Canned Response 1</MenuItem>
-            <MenuItem value="This is my second canned response.">Canned Response 2</MenuItem>
-            <MenuItem value="This is my third canned response.">Canned Response 3</MenuItem>
+            <MenuItem value="Como posso te ajudar?">Como posso te ajudar?</MenuItem>
+            <MenuItem value="Posso te ajudar em algo mais?">Posso te ajudar em algo mais?</MenuItem>
+            <MenuItem value="Certo. Aguarde só um momento enquanto verifico">Certo. Aguarde só um momento enquanto verifico</MenuItem>
           </Select>
         </FormControl>
       </CannedResponsesStyles>
