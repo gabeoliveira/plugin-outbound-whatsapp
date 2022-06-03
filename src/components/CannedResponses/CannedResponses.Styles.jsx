@@ -1,4 +1,4 @@
-import styled from 'react-emotion';
+import styled from '@emotion/styled';
 
 export const CannedResponsesStyles = styled('div')`
   .form {

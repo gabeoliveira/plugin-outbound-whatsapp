@@ -7,7 +7,6 @@ import CannedResponses from './components/CannedResponses/CannedResponses';
 
 
 import reducers, { namespace } from './states';
-import { Notifications } from '@twilio/flex-ui-core';
 
 const PLUGIN_NAME = 'OutboundWhatsappPlugin';
 
