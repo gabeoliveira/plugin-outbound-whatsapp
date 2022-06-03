@@ -22,6 +22,6 @@
     "redux": "^4.2.0"
   },
   "devDependencies": {
-    "@twilio/flex-ui": "^2.0.0-alpha.9"
+    "@twilio/flex-ui": "^2.0.0-beta.1"
   }
 }

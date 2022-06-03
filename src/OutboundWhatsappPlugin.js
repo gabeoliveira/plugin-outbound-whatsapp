@@ -1,6 +1,7 @@
 import React from 'react';
 import { VERSION } from '@twilio/flex-ui';
 import { FlexPlugin } from '@twilio/flex-plugin';
+import { CustomizationProvider } from "@twilio-paste/core/customization";
 import NewWaTaskButton  from './components/NewWaTaskButton';
 import OutboundWaDialog from './components/OutboundWaDialog/OutboundWaDialog';
 import CannedResponses from './components/CannedResponses/CannedResponses';
@@ -24,6 +25,10 @@ export default class OutboundWhatsappPlugin extends FlexPlugin {
    */
   init(flex, manager) {
     this.registerReducers(manager);
+
+    flex.setProviders({
+      PasteThemeProvider: CustomizationProvider
+    });
 
     /*Outbound WhatsApp button*/
     flex.MainHeader.Content.add(<NewWaTaskButton key="outbound-whatsapp-button"/>, {sortOrder: -999, align: 'end'})
