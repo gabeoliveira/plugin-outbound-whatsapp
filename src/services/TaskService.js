@@ -7,10 +7,11 @@ class TaskService {
     baseUrl = process.env.REACT_APP_TASK_CREATION_ENDPOINT;
     availableActivitySid = process.env.REACT_APP_AVAILABLE_ACTIVITY_SID;
 
-     createTask = (toNumber) => {
+     createTask = (toNumber, initialNotificationMessage) => {
         let data = {
             toNumber: 'whatsapp:' + toNumber,
             worker: this.manager.user.identity,
+            initialNotificationMessage,
             Token: this.manager.store.getState().flex.session.ssoTokenPayload.token
         }
         

@@ -1,6 +1,12 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
+import { useCombobox } from 'downshift';
 import { withTheme, Actions } from "@twilio/flex-ui";
+import { CloseIcon } from "@twilio-paste/icons/esm/CloseIcon";
+import { SearchIcon } from "@twilio-paste/icons/esm/SearchIcon";
+
 import taskService from "../../services/TaskService";
+import twilioService from "../../services/TwilioService";
+
 import {
   Combobox,
   Modal,
@@ -12,11 +18,67 @@ import {
   ModalFooterActions,
   Input,
   Label,
-  Paragraph,
-  Stack
+  TextArea,
+  Box,
+  Stack,
+  Spinner
 } from '@twilio-paste/core';
 import Handlebars from "handlebars";
 
+const AutoCompleteTemplate = (props) => {
+  const [value, setValue] = React.useState('');
+
+  const clear = () => {
+    props.setSelectedItem('');
+    setValue('');
+    reset();
+  }
+
+  const {reset, ...state} = useCombobox({
+    items: props.inputItems,
+    onSelectedItemChange: props.onSelectedItemChange,
+    onInputValueChange: ({inputValue}) => {
+      if (inputValue !== undefined) {
+        props.setInputItems(inputValue);
+        setValue(inputValue);
+      } 
+      
+      if (inputValue === "") {
+        clear();
+      }
+    },
+    inputValue: value,
+    selectedItem: props.selectedItem,
+  });
+  
+  return (
+    <>
+      <Combobox
+        state={{...state, reset}}
+        items={props.inputItems}
+        required
+        disabled={props.loading}
+        autocomplete
+        labelText="Template"
+        selectedItem={props.selectedItem}
+        insertAfter={
+          <Button
+            variant="link"
+            size="reset"
+            onClick={clear}
+          >
+            {!!value 
+              ? <CloseIcon decorative={false} title="Limpar" />  
+              : props.loading
+                ? <Spinner size="sizeIcon20" decorative={false} title="Loading" /> 
+                : <SearchIcon decorative={false} title="Buscar" />
+            }
+          </Button>
+        }
+      />
+    </>
+  );
+};
 
 class OutboundWaDialog extends React.Component {
   constructor(props) {
@@ -28,8 +90,12 @@ class OutboundWaDialog extends React.Component {
     this.state = {
       open: false,
       phoneNumber: '',
+      templates: [],
+      inputItems: [],
+      loading: true,
       selectedTemplate: '',
-      templateInputs: {}
+      templateInputs: {},
+      message: ''
     };
   }
 
@@ -42,6 +108,17 @@ class OutboundWaDialog extends React.Component {
       },
       false
     );
+
+    twilioService.getTemplates(250)
+      .then(templates => {
+        const items = templates.map(t => t.languages[0].content);
+        this.setState({
+          templates: items,
+          inputItems: items,
+          loading: false
+        })
+      });
+
   }
 
   showForm(media) {
@@ -54,18 +131,27 @@ class OutboundWaDialog extends React.Component {
   }
 
   setPhone(phoneNumber) {
-    phoneNumber = '+55' + phoneNumber;
     this.setState({phoneNumber});
   }
 
-  createTask(){
-    Actions.invokeAction('SetActivity',{activitySid: taskService.availableActivitySid});
-    taskService.createTask(this.state.phoneNumber);
-    this.setState({open: false});
+  cleanForm() {
+    this.setState({
+      open: false,
+      phoneNumber: '',
+      selectedTemplate: '',
+      inputItems: [],
+      templateInputs: {},
+      message: ''
+    });
   }
 
-  interpolateMessage() {
-    const {selectedTemplate, templateInputs} = this.state;
+  createTask(){
+    Actions.invokeAction('SetActivity', {activitySid: taskService.availableActivitySid});
+    taskService.createTask('+55' + this.state.phoneNumber, this.state.message);
+    this.cleanForm();
+  }
+
+  interpolateMessage(selectedTemplate, templateInputs) {
     const template = Handlebars.compile(selectedTemplate);
     return template(templateInputs);
   }
@@ -80,12 +166,16 @@ class OutboundWaDialog extends React.Component {
         placeholder={placeholder}
         value={value === placeholder ? '' : value}
         onChange={e => {
+
+          const templateInputs = {
+            ...this.state.templateInputs,
+            [inputName]: e.target.value || placeholder
+          };
+
           this.setState({
             ...this.state,
-            templateInputs: {
-              ...this.state.templateInputs,
-              [inputName]: e.target.value || placeholder
-            }
+            templateInputs,
+            message: this.interpolateMessage(this.state.selectedTemplate, templateInputs)
           });
         }}
         required
@@ -94,69 +184,97 @@ class OutboundWaDialog extends React.Component {
   }
 
   render() {
-    const templates = [
-      "Olá {{1}} 😃! Sou {{2}}, agente de relacionamento da sua conta e acompanho você aqui na {{3}} 🤩.\nPodemos conversar por aqui?",
-      'Adrienne Maree Brown',
-      'Octavia Butler'];
+    const templateInputs = this.createTemplateInputs();
 
     return (
       <Modal isOpen={this.state.open} onDismiss={this.cancelForm} size="wide">
-        <ModalHeader>
-          <ModalHeading as="h3">
-            Iniciar uma conversa por Whatsapp
-          </ModalHeading>
-        </ModalHeader>
-        <ModalBody style={{minHeight: 400}} element="MODAL_BODY_HEIGHT_400">
-          <Label htmlFor="phoneNumber" required>Número</Label>
+        <form onSubmit={(e) => {
+          e.preventDefault();
+          this.createTask();
+        }}>
+          <ModalHeader>
+            <ModalHeading as="h3">
+              Iniciar uma conversa por Whatsapp
+            </ModalHeading>
+          </ModalHeader>
+          <ModalBody>
+            <Stack orientation="vertical" spacing="space70">
+              <Box>
+                <Label htmlFor="phoneNumber" required>Número</Label>
 
-          <Input
-            id="phoneNumber"
-            name="phoneNumber"
-            type="text"
-            placeholder="DDD + Número"
-            onChange={e => this.setPhone(e.target.value)}
-            required
-          />
+                <Input
+                  id="phoneNumber"
+                  name="phoneNumber"
+                  type="text"
+                  placeholder="DDD + Número"
+                  onChange={e => this.setPhone(e.target.value)}
+                  value={this.state.phoneNumber}
+                  required
+                />
+              </Box>
 
-          <Combobox
-            items={templates}
-            labelText="Selecione um template"
-            selectedItem={this.state.selectedTemplate}
-            onSelectedItemChange={comboState => {
-              const templateInputs = {};
-              const selectedTemplate = comboState.selectedItem;
+              <Box>
+                <AutoCompleteTemplate
+                  inputItems={this.state.inputItems}
+                  setInputItems={(inputValue) => {
+                    this.setState({
+                      inputItems: this.state.templates.filter(item => item.toLowerCase().includes(inputValue.toLowerCase()))
+                    });
+                  }}
+                  loading={this.state.loading}
+                  selectedItem={this.state.selectedTemplate}
+                  setSelectedItem={(item) => this.setState({selectedTemplate: ''})}
+                  onSelectedItemChange={changes => {
+                    if (changes.selectedItem != null) {
+                      const templateInputs = {};
+                      const selectedTemplate = changes.selectedItem;
 
-              [...selectedTemplate.matchAll(/\{\{([0-9]+)\}\}/g)].forEach(([value, name]) => {
-                templateInputs[name] = value;
-              });
+                      [...selectedTemplate.matchAll(/\{\{([0-9]+)\}\}/g)].forEach(([value, name]) => {
+                        templateInputs[name] = value;
+                      });
 
-              this.setState({
-                ...this.state,
-                selectedTemplate,
-                templateInputs
-              });
-            }}
-            required />
+                      this.setState({
+                        selectedTemplate,
+                        templateInputs,
+                        message: selectedTemplate
+                      });
+                    } else {
+                      this.setState({
+                        selectedTemplate: '',
+                        templateInputs: [],
+                        message: ''
+                      });
+                    }
+                  }} />
+              </Box>
+              
+              {templateInputs.length 
+                ? (<Box>
+                    <Label required>Valores</Label>
+                    <Stack orientation="horizontal" spacing="space30" paddingTop="space40">
+                      {this.createTemplateInputs()}
+                    </Stack>
+                  </Box>)
+                : <Box/>
+              }
 
-          <Stack orientation="horizontal" spacing="space60">
-            {this.createTemplateInputs()}
-          </Stack>
-
-          <Paragraph>
-            {this.interpolateMessage()}
-          </Paragraph>
-
-        </ModalBody>
-        <ModalFooter>
-          <ModalFooterActions>
-            <Button variant="secondary" onClick={this.cancelForm}>
-              Cancelar
-            </Button>
-            <Button variant="primary" onClick={this.createTask}>
-              Enviar
-            </Button>
-          </ModalFooterActions>
-        </ModalFooter>
+              <Box>
+                <Label htmlFor="message" required>Mensagem</Label>
+                <TextArea id="message" name="message" readOnly value={this.state.message} required/>
+              </Box>
+            </Stack>
+          </ModalBody>
+          <ModalFooter>
+            <ModalFooterActions>
+              <Button variant="secondary" onClick={this.cancelForm}>
+                Cancelar
+              </Button>
+              <Button variant="primary" type="submit">
+                Enviar
+              </Button>
+            </ModalFooterActions>
+          </ModalFooter>
+        </form>
       </Modal>
     );
   }
