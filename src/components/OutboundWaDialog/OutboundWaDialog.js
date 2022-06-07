@@ -87,12 +87,14 @@ class OutboundWaDialog extends React.Component {
     this.showForm = this.showForm.bind(this);
     this.cancelForm = this.cancelForm.bind(this);
     this.createTask = this.createTask.bind(this);
+    this.cleanForm = this.cleanForm.bind(this);
     this.state = {
       open: false,
       phoneNumber: '',
       templates: [],
       inputItems: [],
       loading: true,
+      sending: false,
       selectedTemplate: '',
       templateInputs: {},
       message: ''
@@ -147,8 +149,7 @@ class OutboundWaDialog extends React.Component {
 
   createTask(){
     Actions.invokeAction('SetActivity', {activitySid: taskService.availableActivitySid});
-    taskService.createTask('+55' + this.state.phoneNumber, this.state.message);
-    this.cleanForm();
+    return taskService.createTask('+55' + this.state.phoneNumber, this.state.message);
   }
 
   interpolateMessage(selectedTemplate, templateInputs) {
@@ -190,7 +191,13 @@ class OutboundWaDialog extends React.Component {
       <Modal isOpen={this.state.open} onDismiss={this.cancelForm} size="wide">
         <form onSubmit={(e) => {
           e.preventDefault();
-          this.createTask();
+          
+          this.setState({sending: true});
+          this.createTask()
+            .then(() => {
+              this.setState({sending: false})
+              this.cleanForm();
+            });
         }}>
           <ModalHeader>
             <ModalHeading as="h3">
@@ -266,11 +273,11 @@ class OutboundWaDialog extends React.Component {
           </ModalBody>
           <ModalFooter>
             <ModalFooterActions>
-              <Button variant="secondary" onClick={this.cancelForm}>
+              <Button variant="secondary" onClick={this.cancelForm} disabled={this.state.sending}>
                 Cancelar
               </Button>
-              <Button variant="primary" type="submit">
-                Enviar
+              <Button variant="primary" type="submit" disabled={this.state.sending}>
+                {this.state.sending ? <Spinner size="sizeIcon20" decorative={false} title="Loading" /> : 'Enviar'}
               </Button>
             </ModalFooterActions>
           </ModalFooter>

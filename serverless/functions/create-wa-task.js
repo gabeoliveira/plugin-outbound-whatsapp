@@ -13,7 +13,7 @@ exports.handler = TokenValidator(async (context, event, callback) => {
   
   const {
     toNumber,
-    worker,
+    targetWorkerSid,
     initialNotificationMessage,
     sourceChatChannelSid
   } = event;
@@ -65,13 +65,13 @@ exports.handler = TokenValidator(async (context, event, callback) => {
   const createSMSChatChannelWithTask = async (flexFlowSid, identity) => {
     let channel;
     console.debug(`Creating SMS Chat Channel to '${toNumber}' using Flex Flow SID '${flexFlowSid}' and identity '${identity}'`); 
-    
+
     const taskAttributes = {
       to: toNumber,
       direction: 'outbound',
       name: toName,
       from: fromNumber,
-      worker: worker,
+      targetWorkerSid,
       sourceChatChannelSid
     };
 
