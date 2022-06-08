@@ -19,7 +19,7 @@ exports.handler = TokenValidator(async (context, event, callback) => {
   } = event;
 
   const fromNumber = 'whatsapp:' + process.env.TWILIO_WHATSAPP_NUMBER;
-  const toName = toNumber;
+  const toName = `whatsapp:${toNumber}`;
   
   /**
    * Validate mandatory fields are supplied
@@ -82,7 +82,7 @@ exports.handler = TokenValidator(async (context, event, callback) => {
               target: toNumber,
               identity: identity,
               chatUserFriendlyName: toName,
-              chatFriendlyName: `Whatsapp:${toNumber}`,
+              chatFriendlyName: toName,
               flexFlowSid: flexFlowSid,
               taskAttributes: JSON.stringify(taskAttributes)
             });
@@ -123,7 +123,7 @@ exports.handler = TokenValidator(async (context, event, callback) => {
     
     const participants = [
       {
-        Identifier: toNumber,
+        Identifier: toName,
         ProxyIdentifier: fromNumber,
         FriendlyName: toName
       }, {

@@ -9,7 +9,7 @@ class TaskService {
 
      createTask = (toNumber, initialNotificationMessage) => {
         let data = {
-            toNumber: 'whatsapp:' + toNumber,
+            toNumber,
             targetWorkerSid: this.manager.workerClient.sid,
             initialNotificationMessage,
             Token: this.manager.store.getState().flex.session.ssoTokenPayload.token
