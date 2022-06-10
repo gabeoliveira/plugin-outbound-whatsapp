@@ -45,34 +45,18 @@ export default class OutboundWhatsappPlugin extends FlexPlugin {
       sortOrder: 1
     });
 
-    /*Notification registration for task creation*/
-
-    flex.Notifications.registerNotification({
-      id: "waTaskCreated",
-      closeButton: true,
-      content: "Outbound Whatsapp task created. The customer has not yet been messaged. Please contact him using one of the pre-registered templates.",
-      timeout: 5000,
-      type: "information"
-    });
-
     /* Agent auto-responses */
 
-    flex.MessageInput.Content.add(<CannedResponses key="canned-responses" />);
+    flex.MessageInputV2.Content.add(<CannedResponses key="canned-responses" />);
   
     
     /* Register event listener for new reservations so Flex will auto-accept outbound tasks */
-    manager.workerClient.on('reservationCreated', payload => {
-      
-
-      const { sid , task } = payload;
-
+    manager.workerClient.on('reservation.created', reservation => {
+      const { sid , task } = reservation;
       console.log(task.attributes);
-
 
       if(task.attributes.channelType === 'whatsapp' && task.attributes.direction === 'outbound'){
         console.log('New outbound task received');
-
-        flex.Notifications.showNotification("waTaskCreated", null);
         
         flex.Actions.invokeAction('AcceptTask', {
           sid
@@ -81,9 +65,7 @@ export default class OutboundWhatsappPlugin extends FlexPlugin {
         flex.Actions.invokeAction('SelectTask', {
           sid
         });
-
       }
-
     });
 
   }
