@@ -1,8 +1,9 @@
-import React, { useEffect, useState } from "react";
 import { useCombobox } from 'downshift';
 import { withTheme, Actions } from "@twilio/flex-ui";
 import { CloseIcon } from "@twilio-paste/icons/esm/CloseIcon";
 import { SearchIcon } from "@twilio-paste/icons/esm/SearchIcon";
+import { Toaster } from '@twilio-paste/toast';
+import { v4 as uuidv4 } from 'uuid';
 
 import taskService from "../../services/TaskService";
 import twilioService from "../../services/TwilioService";
@@ -41,8 +42,8 @@ const AutoCompleteTemplate = (props) => {
       if (inputValue !== undefined) {
         props.setInputItems(inputValue);
         setValue(inputValue);
-      } 
-      
+      }
+
       if (inputValue === "") {
         clear();
       }
@@ -50,7 +51,7 @@ const AutoCompleteTemplate = (props) => {
     inputValue: value,
     selectedItem: props.selectedItem,
   });
-  
+
   return (
     <>
       <Combobox
@@ -67,10 +68,10 @@ const AutoCompleteTemplate = (props) => {
             size="reset"
             onClick={clear}
           >
-            {!!value 
-              ? <CloseIcon decorative={false} title="Limpar" />  
+            {!!value
+              ? <CloseIcon decorative={false} title="Limpar" />
               : props.loading
-                ? <Spinner size="sizeIcon20" decorative={false} title="Loading" /> 
+                ? <Spinner size="sizeIcon20" decorative={false} title="Loading" />
                 : <SearchIcon decorative={false} title="Buscar" />
             }
           </Button>
@@ -97,7 +98,8 @@ class OutboundWaDialog extends React.Component {
       sending: false,
       selectedTemplate: '',
       templateInputs: {},
-      message: ''
+      message: '',
+      toasts: [],
     };
   }
 
@@ -143,7 +145,7 @@ class OutboundWaDialog extends React.Component {
       selectedTemplate: '',
       inputItems: [],
       templateInputs: {},
-      message: ''
+      message: '',
     });
   }
 
@@ -188,101 +190,121 @@ class OutboundWaDialog extends React.Component {
     const templateInputs = this.createTemplateInputs();
 
     return (
-      <Modal isOpen={this.state.open} onDismiss={this.cancelForm} size="wide">
-        <form onSubmit={(e) => {
-          e.preventDefault();
-          
-          this.setState({sending: true});
-          this.createTask()
-            .then(() => {
-              this.setState({sending: false})
-              this.cleanForm();
-            });
-        }}>
-          <ModalHeader>
-            <ModalHeading as="h3">
-              Iniciar uma conversa por Whatsapp
-            </ModalHeading>
-          </ModalHeader>
-          <ModalBody>
-            <Stack orientation="vertical" spacing="space70">
-              <Box>
-                <Label htmlFor="phoneNumber" required>Número</Label>
+      <>
+        <Modal isOpen={this.state.open} onDismiss={this.cancelForm} size="wide">
+          <form onSubmit={(e) => {
+            e.preventDefault();
 
-                <Input
-                  id="phoneNumber"
-                  name="phoneNumber"
-                  type="text"
-                  placeholder="DDD + Número"
-                  onChange={e => this.setPhone(e.target.value)}
-                  value={this.state.phoneNumber}
-                  required
-                />
-              </Box>
+            this.setState({sending: true});
+            this.createTask()
+              .then(() => {
+                this.setState({sending: false})
+                this.cleanForm();
+              }).catch(err => {
+                console.error(err);
+                this.setState({
+                  sending: false,
+                  toasts: [...this.state.toasts, {
+                    id: uuidv4(),
+                    variant: 'error',
+                    message: 'Ocorreu um erro ao enviar a mensagem: ' + err,
+                  }]
+                });
+              });;
+          }}>
+            <ModalHeader>
+              <ModalHeading as="h3">
+                Iniciar uma conversa por Whatsapp
+              </ModalHeading>
+            </ModalHeader>
+            <ModalBody>
+              <Stack orientation="vertical" spacing="space70">
+                <Box>
+                  <Label htmlFor="phoneNumber" required>Número</Label>
 
-              <Box>
-                <AutoCompleteTemplate
-                  inputItems={this.state.inputItems}
-                  setInputItems={(inputValue) => {
-                    this.setState({
-                      inputItems: this.state.templates.filter(item => item.toLowerCase().includes(inputValue.toLowerCase()))
-                    });
-                  }}
-                  loading={this.state.loading}
-                  selectedItem={this.state.selectedTemplate}
-                  setSelectedItem={(item) => this.setState({selectedTemplate: ''})}
-                  onSelectedItemChange={changes => {
-                    if (changes.selectedItem != null) {
-                      const templateInputs = {};
-                      const selectedTemplate = changes.selectedItem;
+                  <Input
+                    id="phoneNumber"
+                    name="phoneNumber"
+                    type="text"
+                    placeholder="DDD + Número"
+                    onChange={e => this.setPhone(e.target.value)}
+                    value={this.state.phoneNumber}
+                    required
+                  />
+                </Box>
 
-                      [...selectedTemplate.matchAll(/\{\{([0-9]+)\}\}/g)].forEach(([value, name]) => {
-                        templateInputs[name] = value;
-                      });
-
+                <Box>
+                  <AutoCompleteTemplate
+                    inputItems={this.state.inputItems}
+                    setInputItems={(inputValue) => {
                       this.setState({
-                        selectedTemplate,
-                        templateInputs,
-                        message: selectedTemplate
+                        inputItems: this.state.templates.filter(item => item.toLowerCase().includes(inputValue.toLowerCase()))
                       });
-                    } else {
-                      this.setState({
-                        selectedTemplate: '',
-                        templateInputs: [],
-                        message: ''
-                      });
-                    }
-                  }} />
-              </Box>
-              
-              {templateInputs.length 
-                ? (<Box>
-                    <Label required>Valores</Label>
-                    <Stack orientation="horizontal" spacing="space30" paddingTop="space40">
-                      {this.createTemplateInputs()}
-                    </Stack>
-                  </Box>)
-                : <Box/>
-              }
+                    }}
+                    loading={this.state.loading}
+                    selectedItem={this.state.selectedTemplate}
+                    setSelectedItem={(item) => this.setState({selectedTemplate: ''})}
+                    onSelectedItemChange={changes => {
+                      if (changes.selectedItem != null) {
+                        const templateInputs = {};
+                        const selectedTemplate = changes.selectedItem;
 
-              <Box>
-                <Label htmlFor="message" required>Mensagem</Label>
-                <TextArea id="message" name="message" readOnly value={this.state.message} required/>
-              </Box>
-            </Stack>
-          </ModalBody>
-          <ModalFooter>
-            <ModalFooterActions>
-              <Button variant="secondary" onClick={this.cancelForm} disabled={this.state.sending}>
-                Cancelar
-              </Button>
-              <Button variant="primary" type="submit" disabled={this.state.sending}>
-                {this.state.sending ? <Spinner size="sizeIcon20" decorative={false} title="Loading" /> : 'Enviar'}
-              </Button>
-            </ModalFooterActions>
-          </ModalFooter>
-        </form>
-      </Modal>
+                        [...selectedTemplate.matchAll(/\{\{([0-9]+)\}\}/g)].forEach(([value, name]) => {
+                          templateInputs[name] = value;
+                        });
+
+                        this.setState({
+                          selectedTemplate,
+                          templateInputs,
+                          message: selectedTemplate
+                        });
+                      } else {
+                        this.setState({
+                          selectedTemplate: '',
+                          templateInputs: [],
+                          message: ''
+                        });
+                      }
+                    }} />
+                </Box>
+
+                {templateInputs.length
+                  ? (<Box>
+                      <Label required>Valores</Label>
+                      <Stack orientation="horizontal" spacing="space30" paddingTop="space40">
+                        {this.createTemplateInputs()}
+                      </Stack>
+                    </Box>)
+                  : <Box/>
+                }
+
+                <Box>
+                  <Label htmlFor="message" required>Mensagem</Label>
+                  <TextArea id="message" name="message" readOnly value={this.state.message} required/>
+                </Box>
+              </Stack>
+            </ModalBody>
+            <ModalFooter>
+              <ModalFooterActions>
+                <Button variant="secondary" onClick={this.cancelForm} disabled={this.state.sending}>
+                  Cancelar
+                </Button>
+                <Button variant="primary" type="submit" disabled={this.state.sending}>
+                  {this.state.sending ? <Spinner size="sizeIcon20" decorative={false} title="Loading" /> : 'Enviar'}
+                </Button>
+              </ModalFooterActions>
+            </ModalFooter>
+          </form>
+        </Modal>
+        <Toaster
+          toasts={this.state.toasts.length ? this.state.toasts : [] }
+          pop={(id) => {
+            this.setState({
+              toasts: this.state.toasts.filter(( t ) => t.id !== id)
+            })
+          }}
+        />
+      </>
     );
   }
 }
