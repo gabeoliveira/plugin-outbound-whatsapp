@@ -71,6 +71,7 @@ exports.handler = TokenValidator(async (context, event, callback) => {
       direction: 'outbound',
       name: toName,
       from: fromNumber,
+      initialNotificationMessage,
       targetWorkerSid,
       sourceChatChannelSid
     };
