@@ -52,7 +52,7 @@ exports.handler = TokenValidator(async (context, event, callback) => {
           queue_sid: queueSid,
         },
       )
-    } else if (previousConversation != null) {
+    } else {
       result = await updateTaskInteraction(client, previousConversation, {
         workspace_sid: workspaceSid,
         workflow_sid: workflowSid,
@@ -85,14 +85,6 @@ exports.handler = TokenValidator(async (context, event, callback) => {
           },
         )
       }
-    } else {
-      result = await sendOutboundMessage(
-        client,
-        toNumber,
-        fromNumber,
-        initialNotificationMessage,
-        previousConversation,
-      )
     }
 
     response.setBody(result)
@@ -268,57 +260,6 @@ const updateTaskInteraction = async (
     console.error(`Error updating task interaction!`, error)
     throw error
   }
-}
-
-const sendOutboundMessage = async (
-  client,
-  to,
-  from,
-  body,
-  previousConversation,
-) => {
-  console.log(`Sending outbound whatsapp message for ${toNumber}`)
-
-  const friendlyName = `Outbound ${from} -> ${to}`
-
-  let channel = {}
-
-  if (previousConversation == null) {
-    channel = await client.conversations.conversations.create({
-      friendlyName,
-    })
-
-    try {
-      await client.conversations
-        .conversations(channel.sid)
-        .participants.create({
-          "messagingBinding.address": `whatsapp:${to}`,
-          "messagingBinding.proxyAddress": from,
-        })
-
-      console.log(`Outbound whatsapp message sended for ${toNumber}`)
-    } catch (error) {
-      console.log(error)
-
-      if (error.code === 50416) {
-        return {
-          success: false,
-          errorMessage: `Error sending message. There is an open conversation already to ${to}`,
-        }
-      } else
-        return {
-          success: false,
-          errorMessage: `Error sending message. Error while adding ${to} channel`,
-        }
-    }
-  } else {
-    channel = previousConversation
-    channel.sid = previousConversation.conversationSid
-  }
-
-  await sendMessage(client, channel.sid, from, body)
-
-  return { success: true, channelSid: channel.sid }
 }
 
 const sendMessage = async (client, conversationSid, author, body) => {
