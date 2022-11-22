@@ -1,313 +1,278 @@
-const { v4: uuidv4 } = require('uuid');
-const TokenValidator = require('twilio-flex-token-validator').functionValidator;
+const TokenValidator = require("twilio-flex-token-validator").functionValidator
+const { object, string } = require("yup")
 
 exports.handler = TokenValidator(async (context, event, callback) => {
+  const { ACCOUNT_SID, AUTH_TOKEN } = context
+  const client = require("twilio")(ACCOUNT_SID, AUTH_TOKEN)
 
-  const {
-    ACCOUNT_SID, 
-    AUTH_TOKEN,
-    TWILIO_PROXY_SERVICE_SID,
-  } = context;
-  const client = require('twilio')(ACCOUNT_SID, AUTH_TOKEN);
+  const response = new Twilio.Response()
 
-  
+  response.appendHeader("Access-Control-Allow-Origin", "*")
+  response.appendHeader("Access-Control-Allow-Methods", "OPTIONS, POST, GET")
+  response.appendHeader("Content-Type", "application/json")
+  response.appendHeader("Access-Control-Allow-Headers", "Content-Type")
+
+  const { params, success, error } = await validate(event)
+
+  if (!success) {
+    console.log("Event property check failed.", error)
+    response.setStatusCode(400)
+    response.setBody({ status: 400, errors: error })
+    return callback(null, response)
+  }
+
   const {
     toNumber,
     targetWorkerSid,
     initialNotificationMessage,
-    sourceChatChannelSid
-  } = event;
+    workspaceSid,
+    workflowSid,
+    queueSid,
+  } = params
 
-  const fromNumber = 'whatsapp:' + process.env.TWILIO_WHATSAPP_NUMBER;
-  const toName = `whatsapp:${toNumber}`;
-  
-  /**
-   * Validate mandatory fields are supplied
-   */
-  const verifyEventProps = () => {
-    const result = {
-      success: false,
-      errors: []
-    };
-    
-    if (!toNumber) result.errors.push("Missing 'toNumber' in request body");
-    else result.success = true;
+  const fromNumber = `whatsapp:${process.env.TWILIO_WHATSAPP_NUMBER}`
+  let result
 
-    return result;
-  }
-  
-  /**
-   * Looks for the sms Flex Flow matching the supplied fromNumber.
-   * NOTE: It only looks for the *task* integration type (as there can be multiple Flex Flows
-   * per number) 
-   */
-  const getFlexFlowForNumber = async () => {
-    let flexFlow;
-    console.debug(`Looking for Flex Flow for fromNumber '${fromNumber}'`); 
-    try {
-      const flexFlows = await client.flexApi.flexFlow.list();
-      
-      flexFlow = flexFlows.find(
-        flow => flow.integrationType === 'task' && flow.contactIdentity === fromNumber
-      );
-    } catch (error) {
-      console.error(`Error finding Flex Flow!`, error);
-      throw error;      
-    }
+  try {
+    const previousConversation = await fetchPreviousConversations(
+      client,
+      toNumber,
+    )
 
-    console.debug(`Flow Flow is:\n ${JSON.stringify(flexFlow)}'`); 
-    return flexFlow;
-  }
+    if (previousConversation == null) {
+      result = await openTaskInteraction(
+        client,
+        toNumber,
+        fromNumber,
+        initialNotificationMessage,
+        {
+          workspace_sid: workspaceSid,
+          workflow_sid: workflowSid,
+          worker_sid: targetWorkerSid,
+          queue_sid: queueSid,
+        },
+      )
+    } else {
+      result = await updateTaskInteraction(client, previousConversation, {
+        workspace_sid: workspaceSid,
+        workflow_sid: workflowSid,
+        worker_sid: targetWorkerSid,
+        queue_sid: queueSid,
+      })
 
-  /**
-   * Creates the SMS Chat Channel - using the Flex API
-   */
-  const createSMSChatChannelWithTask = async (flexFlowSid, identity) => {
-    let channel;
-    console.debug(`Creating SMS Chat Channel to '${toNumber}' using Flex Flow SID '${flexFlowSid}' and identity '${identity}'`); 
+      if (result.success) {
+        await sendMessage(
+          client,
+          previousConversation.conversationSid,
+          fromNumber,
+          initialNotificationMessage,
+        )
+      } else {
+        await client.conversations
+          .conversations(previousConversation.conversationSid)
+          .update({ state: "closed" })
 
-    const taskAttributes = {
-      to: toNumber,
-      direction: 'outbound',
-      name: toName,
-      from: fromNumber,
-      initialNotificationMessage,
-      targetWorkerSid,
-      sourceChatChannelSid
-    };
-
-    try {
-      channel = await client.flexApi.channel
-          .create(
-            {
-              target: toNumber,
-              identity: identity,
-              chatUserFriendlyName: toName,
-              chatFriendlyName: toName,
-              flexFlowSid: flexFlowSid,
-              taskAttributes: JSON.stringify(taskAttributes)
-            });
-    } catch (error) {
-      console.error(`Error creating SMS Chat Channel!`, error);
-      throw error;      
-    }
-    
-    console.debug(`SMS Chat Channel is:\n ${JSON.stringify(channel)}'`); 
-    return channel;
-  }
-  
-  /**
-   * Creates the Flex Proxy Service session to be used for the SMS conversation. Reuses existing one if there
-   * is one
-   */
-  const createProxySession = async (chatChannelSid) => {
-    let proxySession;
-
-    // Look for existing session first
-    try {
-      const proxySessions = await client.proxy.services(TWILIO_PROXY_SERVICE_SID).sessions.list();
-
-      proxySession = proxySessions.find(
-        session => session.uniqueName.startsWith(chatChannelSid)
-      );
-
-      if (proxySession) {
-        console.debug(`Found EXISTING Flex Proxy Session between Chat Channel SID '${chatChannelSid}' and toNumber '${toNumber}'`); 
-        return proxySession;
+        result = await openTaskInteraction(
+          client,
+          toNumber,
+          fromNumber,
+          initialNotificationMessage,
+          {
+            workspace_sid: workspaceSid,
+            workflow_sid: workflowSid,
+            worker_sid: targetWorkerSid,
+            queue_sid: queueSid,
+          },
+        )
       }
-    } catch (error) {
-      console.error(`Error looping through existing Flex Proxy Sessions!`, error);
-      throw error;      
     }
 
-    console.debug(`Creating Flex Proxy Session between Chat Channel SID '${chatChannelSid}' and toNumber '${toNumber}'`); 
-    
-    const participants = [
-      {
-        Identifier: toName,
-        ProxyIdentifier: fromNumber,
-        FriendlyName: toName
-      }, {
-        Identifier: chatChannelSid,
-        ProxyIdentifier: fromNumber,
-        FriendlyName: toName
+    response.setBody(result)
+    callback(null, response)
+  } catch (err) {
+    response.appendHeader("Content-Type", "plain/text")
+    response.setBody(err.message)
+    response.setStatusCode(500)
+    console.error(err)
+    callback(null, response)
+  }
+})
+
+const validate = async (event) => {
+  const schema = object().shape({
+    toNumber: string().required(),
+    targetWorkerSid: string(),
+    initialNotificationMessage: string().required(),
+    workspaceSid: string(),
+    workflowSid: string(),
+    queueSid: string(),
+    Token: string(),
+  })
+  try {
+    const params = await schema.validate(event, {
+      abortEarly: false,
+      stripUnknown: true,
+    })
+
+    return { params, success: true }
+  } catch (error) {
+    console.error("Request validation failed", error)
+
+    return { error, success: false }
+  }
+}
+
+const fetchPreviousConversations = async (client, toNumber) => {
+  console.log(`Finding existent open conversation for ${toNumber}`)
+  try {
+    const userConversations =
+      await client.conversations.v1.participantConversations.list({
+        address: `whatsapp:${toNumber}`,
+      })
+
+    console.log(userConversations)
+
+    const openConversation = userConversations.find(
+      (conversation) => conversation.conversationState === "active",
+    )
+
+    if (openConversation) {
+      console.log(`Open conversation is '${JSON.stringify(openConversation)}'`)
+
+      return openConversation
+    }
+
+    console.warn(`Open conversation not found for ${toNumber}`)
+
+    return null
+  } catch (error) {
+    console.error(`Error fetching previous conversation!`, error)
+    throw error
+  }
+}
+
+const openTaskInteraction = async (
+  client,
+  to,
+  from,
+  body,
+  routingProperties,
+) => {
+  const toNumber = `whatsapp:${to}`
+  console.log(`Creating interaction`)
+  try {
+    const interaction = await client.flexApi.v1.interaction.create({
+      channel: {
+        type: "whatsapp",
+        initiated_by: "agent",
+        properties: {
+          type: "whatsapp",
+        },
+        participants: [
+          {
+            address: toNumber,
+            proxy_address: from,
+          },
+        ],
       },
-    ];
-    
-    try {
-      proxySession = await client.proxy.services(TWILIO_PROXY_SERVICE_SID)
-        .sessions
-        .create({
-          uniqueName: chatChannelSid,
-          participants: JSON.stringify(participants),
-          mode: 'message-only'
-        });
-    } catch (error) {
-      console.error(`Error creating Flex Proxy Session!`, error);
-      throw error;      
+      routing: {
+        properties: {
+          ...routingProperties,
+          task_channel_unique_name: "Chat",
+          attributes: {
+            from,
+            direction: "outbound",
+            name: to,
+            customerAddress: toNumber,
+            twilioNumber: from,
+            channelType: "whatsapp",
+            initialNotificationMessage: body,
+          },
+        },
+      },
+    })
+
+    console.log(`New interaction is '${JSON.stringify(interaction)}'`)
+
+    const taskAttributes = JSON.parse(interaction.routing.properties.attributes)
+
+    const conversationSid = taskAttributes.conversationSid
+
+    await sendMessage(client, conversationSid, from, body)
+
+    return {
+      success: true,
+      interactionSid: interaction.sid,
+      conversationSid,
     }
-    
-    console.debug(`Proxy Session is:\n ${JSON.stringify(proxySession)}'`); 
-    return proxySession;
-  }
-  
-    
-  
-  /**
-   * Send the message, using the Chat Channel. Proxy Session will be listening to this channel's events
-   * and will send the outbound SMS.
-   */
-  const sendMessageViaChatChannel = async (chatChannelSid) => {
-    
-    let chatMessage;
-    console.debug(`Sending the message '${initialNotificationMessage}' from fromNumber '${fromNumber}' to toNumber '${toNumber}' using Chat Channel SID '${proxySessionSid}'`); 
-    
-    try {
-      chatMessage = await client.chat.services(chatServiceSid)
-                  .channels(chatChannelSid)
-                  .messages
-                  .create({body: initialNotificationMessage}); // From defaults to "system"
-    } catch (error) {
-      console.error(`Error sending message via Chat Channel!`, error);
-      throw error;      
-    }
-    
-    console.debug(`Chat Message is:\n ${JSON.stringify(chatMessage)}'`); 
-    return chatMessage;
-  }  
-  
-  
-  // *******************************
-  // ORCHESTRATION LOGIC BEGINS HERE
-  // *******************************
-  const response = new Twilio.Response();
-  
-  response.appendHeader('Access-Control-Allow-Origin', '*');
-  response.appendHeader('Access-Control-Allow-Methods', 'OPTIONS, POST, GET');
-  response.appendHeader('Content-Type', 'application/json');
-  response.appendHeader('Access-Control-Allow-Headers', 'Content-Type');
-
-  console.log(response);
-
-  const eventCheck = verifyEventProps(event);
-  if (!eventCheck.success) {
-    console.log('Event property check failed.', eventCheck.errors);
-    response.setStatusCode(400);
-    response.setBody({ status: 400, errors: eventCheck.errors });
-    return callback(null, response);
-  }
-
-  let flexFlow;
-  try {
-    flexFlow = await getFlexFlowForNumber();
   } catch (error) {
-    response.setStatusCode(error && error.status);
-    response.setBody(error);
-    return callback(null, response);
+    console.error(`Error creating task interaction!`, error)
+    throw error
   }
-  if (!flexFlow) {
-    response.setStatusCode(500);
-    response.setBody({ message: 'Unable to find matching Flex Flow' });
-    return callback(null, response);
-  } 
+}
 
-  const chatServiceSid = flexFlow.chatServiceSid;
-  const flexFlowSid = flexFlow.sid;
-  console.log('Matching Flex Flow Chat Service SID:', chatServiceSid);
-  console.log('Matching Flex Flow SID:', flexFlowSid);
+const updateTaskInteraction = async (
+  client,
+  conversation,
+  routingProperties,
+) => {
+  console.log(`Updating interaction`)
+  const attributes = JSON.parse(conversation.conversationAttributes)
 
-  const identity = uuidv4();
+  const {
+    interactionSid,
+    channelSid,
+    taskAttributes,
+    taskChannelUniqueName,
+    webhookSid,
+  } = attributes
 
-  let chatChannel;
   try {
-    chatChannel = await createSMSChatChannelWithTask(flexFlowSid, identity);
-  } catch (error) {
-    response.setStatusCode(error && error.status);
-    response.setBody(error);
-    return callback(null, response);
-  }
-  if (!chatChannel) {
-    response.setStatusCode(500);
-    response.setBody({ message: 'Failed to create Chat Channel' });
-    return callback(null, response);
-  }
-  if (!chatChannel.sid) {
-    response.setStatusCode(chatChannel.status);
-    response.setBody(chatChannel);
-    return callback(null, response);
-  }
-  const chatChannelSid = chatChannel.sid;
-  console.log(`Chat channel SID is '${chatChannelSid}'`);
-  const responseBody = { chatChannel: { identity } };
-  Object.keys(chatChannel).forEach((key) => {
-    // Excluding private properties from the response object
-    if (!key.startsWith('_')) {
-      responseBody.chatChannel[key] = chatChannel[key];
-    }
-  });
+    if (webhookSid && interactionSid) {
+      await client.conversations
+        .conversations(conversation.conversationSid)
+        .webhooks(webhookSid)
+        .remove()
 
-  let proxySession;
-  try {
-    proxySession = await createProxySession(chatChannelSid);
-  } catch (error) {
-    response.setStatusCode(error && error.status);
-    response.setBody(error);
-    return callback(null, response);
-  }
-  if (!proxySession) {
-    response.setStatusCode(500);
-    response.setBody({ message: 'Failed to create Proxy Session' });
-    return callback(null, response);
-  }
-  if (!proxySession.sid) {
-    response.setStatusCode(proxySession.status);
-    response.setBody(proxySession);
-    return callback(null, response);
-  }
-  const proxySessionSid = proxySession.sid;
-  console.log(`Proxy Session SID is '${proxySessionSid}'`);
-  
-  responseBody.proxySession = {};
-  Object.keys(proxySession).forEach((key) => {
-    // Excluding private properties from the response object
-    if (!key.startsWith('_')) {
-      responseBody.proxySession[key] = proxySession[key];
-    }
-  });
-  
-  if (initialNotificationMessage) {
-    // An intial message to the customer is specified, so send this via chat channel
-    let chatMessage;
-    try {
-      chatMessage = await sendMessageViaChatChannel(chatChannelSid);
-    } catch (error) {
-      response.setStatusCode(error && error.status);
-      response.setBody(error);
-      return callback(null, response);
-    }
-    if (!chatMessage) {
-      response.setStatusCode(500);
-      response.setBody({ message: 'Failed to create Chat Message' });
-      return callback(null, response);
-    }
-    if (!chatMessage.sid) {
-      response.setStatusCode(chatMessage.status);
-      response.setBody(chatMessage);
-      return callback(null, response);
-    }
-
-    responseBody.chatMessage = {};
-    Object.keys(chatMessage).forEach((key) => {
-      // Excluding private properties from the response object
-      if (!key.startsWith('_')) {
-        responseBody.chatMessage[key] = chatMessage[key];
+      await client.flexApi.v1
+        .interaction(interactionSid)
+        .channels(channelSid)
+        .invites.create({
+          routing: {
+            properties: {
+              ...routingProperties,
+              task_channel_unique_name: taskChannelUniqueName,
+              attributes: taskAttributes,
+            },
+          },
+        })
+      return {
+        success: true,
+        interactionSid: interactionSid,
+        conversationSid: conversation.conversationSid,
       }
-    });
+    }
+    return {
+      success: false,
+      conversationSid: conversation.conversationSid,
+    }
+  } catch (error) {
+    console.error(`Error updating task interaction!`, error)
+    throw error
   }
-  
-  response.setBody(responseBody);
+}
 
-  console.log(response);
+const sendMessage = async (client, conversationSid, author, body) => {
+  try {
+    const chatMessage = await client.conversations.v1
+      .conversations(conversationSid)
+      .messages.create({ author, body })
 
-  return callback(null, response);
-});
+    console.log(`Chat Message is '${JSON.stringify(chatMessage)}'`)
+
+    return chatMessage
+  } catch (error) {
+    console.error(`Error Sending Conversation Message!`, error)
+    throw error
+  }
+}
