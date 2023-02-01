@@ -44,6 +44,7 @@ class CannedResponses extends React.Component {
           <Option value="Como posso te ajudar?">Como posso te ajudar?</Option>
           <Option value="Posso te ajudar em algo mais?">Posso te ajudar em algo mais?</Option>
           <Option value="Certo. Aguarde só um momento enquanto verifico">Certo. Aguarde só um momento enquanto verifico</Option>
+          <Option value="Ativar o 3G - POS">-Clique na casinha que aparece na tela;\n-Redes;\n-WiFi;\n-Caso o WiFi estiver ligado, desligue-o;\n-Verifique se lá em cima apareceu o 3G em cima da torre de CHIP.</Option>
         </Select>
       </Box>
     )
