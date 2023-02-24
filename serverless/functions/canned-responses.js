@@ -22,7 +22,9 @@ exports.handler = TokenValidator(async (context, event, callback) => {
       .syncListItems.list();
 
     response.appendHeader('Content-Type', 'application/json');
-    response.setBody(lista.map((item) => item.data));
+    response.setBody(
+      lista.map((item) => ({ ...item.data, index: item.index }))
+    );
     console.log(
       `${lista.length} canned responses obtained from /canned-responses`
     );
