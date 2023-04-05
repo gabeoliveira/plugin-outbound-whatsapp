@@ -27,7 +27,24 @@ export default class OutboundWhatsappPlugin extends FlexPlugin {
     this.registerReducers(manager);
 
     flex.setProviders({
-      PasteThemeProvider: CustomizationProvider,
+      CustomProvider: (RootComponent) => (props) => {
+        const pasteProviderProps = {
+          baseTheme: props.theme?.isLight ? 'default' : 'dark',
+          theme: props.theme?.tokens,
+          style: { minWidth: '100%', height: '100%' },
+          elements: {
+            MAIN_HEADER_MENU_BUTTON: {
+              'box-shadow': 'none !important',
+            },
+          },
+        };
+
+        return (
+          <CustomizationProvider {...pasteProviderProps}>
+            <RootComponent {...props} />
+          </CustomizationProvider>
+        );
+      },
     });
 
     if (manager.user.roles.includes('admin')) {
