@@ -50,14 +50,14 @@ export default class OutboundWhatsappPlugin extends FlexPlugin {
     if (manager.user.roles.includes('admin')) {
       flex.MainHeader.Content.add(
         <EditCannedResponses key="edit-canned-responses" />,
-        { sortOrder: -1000, align: 'end' }
+        { sortOrder: -100, align: 'end' }
       );
     }
 
     /*Outbound WhatsApp button*/
     flex.MainHeader.Content.add(
       <NewWaTaskButton key="outbound-whatsapp-button" />,
-      { sortOrder: -999, align: 'end' }
+      { sortOrder: -99, align: 'end' }
     );
 
     /*Custom action to dispatch an event and open the modal screen*/
