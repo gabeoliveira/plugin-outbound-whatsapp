@@ -54,7 +54,7 @@ export default function EditCannedResponses() {
       const responses = await response.json();
       setResponses([
         {
-          index: null,
+          index: -1,
           title: 'Criar nova resposta predefinida',
           message: 'Selecione essa opção para criar uma nova resposta',
         },
@@ -62,7 +62,7 @@ export default function EditCannedResponses() {
       ]);
       setFilteredResponses([
         {
-          index: null,
+          index: -1,
           title: 'Criar nova resposta predefinida',
           message: 'Selecione essa opção para criar uma nova resposta',
         },
@@ -118,7 +118,7 @@ export default function EditCannedResponses() {
                 setSelectedResponse(selectedItem);
                 if (selectedItem) {
                   setEditedResponse(
-                    selectedItem.index
+                    selectedItem.index >= 0
                       ? selectedItem
                       : { title: '', message: '' }
                   );
@@ -128,10 +128,14 @@ export default function EditCannedResponses() {
                 if (inputValue !== undefined) {
                   setResponsesFilterInput(inputValue);
                   setFilteredResponses(
-                    responses.filter((item) =>
-                      item.title
-                        .toLowerCase()
-                        .includes(inputValue.toLowerCase())
+                    responses.filter(
+                      (item) =>
+                        item.title
+                          .toLowerCase()
+                          .includes(inputValue.toLowerCase()) ||
+                        item.message
+                          .toLowerCase()
+                          .includes(inputValue.toLowerCase())
                     )
                   );
                 }
@@ -172,7 +176,7 @@ export default function EditCannedResponses() {
               </Box>
             )}
           </Box>
-          {selectedResponse && selectedResponse.index && (
+          {selectedResponse && selectedResponse.index >= 0 && (
             <Button
               variant="destructive"
               loading={isLoading}
@@ -246,7 +250,7 @@ export default function EditCannedResponses() {
                     Manager.getInstance().store.getState().flex.session
                       .ssoTokenPayload.token,
                 };
-                if (selectedResponse.index) {
+                if (selectedResponse.index >= 0) {
                   bodyData.index = selectedResponse.index;
                 }
                 const response = await fetch(
