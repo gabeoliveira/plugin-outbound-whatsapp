@@ -215,6 +215,17 @@ class OutboundWaDialog extends React.Component {
                 })
                 .catch((err) => {
                   console.error(err);
+
+                  let message;
+                  if (err.response && err.response.status === 409) {
+                    const attendants = err.response.data.attendants
+                      .map((attendant) => attendant.friendlyName)
+                      .join(',');
+                    message = `Não foi possível enviar a mensagem. O cliente está em atedimento com ${attendants}`;
+                  } else {
+                    'Ocorreu um erro ao enviar a mensagem: ' + err;
+                  }
+
                   this.setState({
                     sending: false,
                     toasts: [
@@ -222,7 +233,7 @@ class OutboundWaDialog extends React.Component {
                       {
                         id: uuidv4(),
                         variant: 'error',
-                        message: 'Ocorreu um erro ao enviar a mensagem: ' + err,
+                        message,
                       },
                     ],
                   });

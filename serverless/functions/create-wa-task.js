@@ -58,21 +58,18 @@ exports.handler = TokenValidator(async (context, event, callback) => {
         }
       );
     } else {
-      result = await updateTaskInteraction(client, previousConversation, {
-        workspace_sid: workspaceSid,
-        workflow_sid: workflowSid,
-        worker_sid: targetWorkerSid,
-        queue_sid: queueSid,
-      });
+      const users = await fetchConversationUsers(
+        client,
+        previousConversation.conversationSid
+      );
 
-      if (result.success) {
-        await sendMessage(
-          client,
-          previousConversation.conversationSid,
-          fromNumber,
-          initialNotificationMessage
+      // se nao estiver em conversa com algum agente, encerra a conversation e
+      // cria uma nova
+      if (!users.length) {
+        console.log(
+          'Nenhum usuário encontrado. Encerra conversation e cria uma nova'
         );
-      } else {
+
         await client.conversations
           .conversations(previousConversation.conversationSid)
           .update({ state: 'closed' });
@@ -89,16 +86,27 @@ exports.handler = TokenValidator(async (context, event, callback) => {
             queue_sid: queueSid,
           }
         );
+      } else {
+        console.log(
+          `O usuário já possui uma conversa em andamento com ${JSON.stringify(
+            users
+          )}`
+        );
+
+        throw {
+          code: 409,
+          message: 'O número está em um antedimento',
+          attendants: users,
+        };
       }
     }
 
     response.setBody(result);
     callback(null, response);
   } catch (err) {
-    response.appendHeader('Content-Type', 'plain/text');
-    response.setBody(err.message);
-    response.setStatusCode(500);
     console.error(err);
+    response.setBody({ message: err.message, ...err });
+    response.setStatusCode(err.code || 500);
     callback(null, response);
   }
 });
@@ -142,7 +150,7 @@ const fetchPreviousConversations = async (client, fromNumber, toNumber) => {
     const openConversation = userConversations.find(
       (conversation) =>
         conversation.conversationState === 'active' &&
-        (conversation.participantMessagingBinding || {}).proxyAddress ===
+        (conversation.participantMessagingBinding || {}).proxy_address ===
           fromNumber
     );
 
@@ -192,7 +200,7 @@ const openTaskInteraction = async (
           attributes: {
             from,
             direction: 'outbound',
-            name: to,
+            name: toNumber,
             customerAddress: toNumber,
             twilioNumber: from,
             channelType: 'whatsapp',
@@ -210,6 +218,7 @@ const openTaskInteraction = async (
 
     const conversationSid = taskAttributes.conversationSid;
 
+    // TODO: update conversation with iteraction
     await sendMessage(client, conversationSid, from, body);
 
     return {
@@ -223,53 +232,35 @@ const openTaskInteraction = async (
   }
 };
 
-const updateTaskInteraction = async (
-  client,
-  conversation,
-  routingProperties
-) => {
-  console.log(`Updating interaction`);
-  const attributes = JSON.parse(conversation.conversationAttributes);
-
-  const {
-    interactionSid,
-    channelSid,
-    taskAttributes,
-    taskChannelUniqueName,
-    webhookSid,
-  } = attributes;
-
+const fetchConversationUsers = async (client, conversationSid) => {
+  console.log(`Finding users of conversation ${conversationSid}`);
   try {
-    if (webhookSid && interactionSid) {
-      await client.conversations
-        .conversations(conversation.conversationSid)
-        .webhooks(webhookSid)
-        .remove();
+    const conversationParticipants = await client.conversations.v1
+      .conversations(conversationSid)
+      .participants.list({ limit: 20 });
 
-      await client.flexApi.v1
-        .interaction(interactionSid)
-        .channels(channelSid)
-        .invites.create({
-          routing: {
-            properties: {
-              ...routingProperties,
-              task_channel_unique_name: taskChannelUniqueName,
-              attributes: taskAttributes,
-            },
-          },
-        });
-      return {
-        success: true,
-        interactionSid: interactionSid,
-        conversationSid: conversation.conversationSid,
-      };
-    }
-    return {
-      success: false,
-      conversationSid: conversation.conversationSid,
-    };
+    console.log(
+      `Found participants ${JSON.stringify(conversationParticipants)}`
+    );
+
+    const users = await Promise.all(
+      conversationParticipants
+        .filter((participant) => participant.identity != null)
+        .map(async (participant) => {
+          console.log(`Fetch user ${JSON.stringify(participant)}`);
+
+          const user = await client.conversations.v1
+            .users(participant.identity)
+            .fetch();
+
+          console.log(`User is ${JSON.stringify(user)}`);
+          return user;
+        })
+    );
+
+    return users;
   } catch (error) {
-    console.error(`Error updating task interaction!`, error);
+    console.error(`Error fetching conversation users!`, error);
     throw error;
   }
 };
