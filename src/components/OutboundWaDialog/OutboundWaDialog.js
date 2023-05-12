@@ -4,6 +4,7 @@ import { CloseIcon } from '@twilio-paste/icons/esm/CloseIcon';
 import { SearchIcon } from '@twilio-paste/icons/esm/SearchIcon';
 import { Toaster } from '@twilio-paste/toast';
 import { v4 as uuidv4 } from 'uuid';
+import unidecode from 'unidecode';
 
 import taskService from '../../services/TaskService';
 import twilioService from '../../services/TwilioService';
@@ -22,6 +23,7 @@ import {
   ModalFooterActions,
   Input,
   Label,
+  Text,
   TextArea,
   Box,
   Stack,
@@ -65,6 +67,12 @@ const AutoCompleteTemplate = (props) => {
         autocomplete
         labelText="Template"
         selectedItem={props.selectedItem}
+        itemToString={
+          props.itemToString || ((item) => (item ? String(item) : null))
+        }
+        optionTemplate={
+          props.optionTemplate || ((item) => JSON.stringify(item))
+        }
         insertAfter={
           <Button variant="link" size="reset" onClick={clear}>
             {!!value ? (
@@ -114,7 +122,10 @@ class OutboundWaDialog extends React.Component {
     );
 
     twilioService.getTemplates(250).then((templates) => {
-      const items = templates.map((t) => t.languages[0].content);
+      const items = templates.map((t) => ({
+        message: t.languages[0].content,
+        templateName: t.template_name,
+      }));
       this.setState({
         templates: items,
         inputItems: items,
@@ -266,11 +277,45 @@ class OutboundWaDialog extends React.Component {
                 <Box>
                   <AutoCompleteTemplate
                     inputItems={this.state.inputItems}
+                    itemToString={(item) =>
+                      item ? String(item.templateName) : ''
+                    }
+                    optionTemplate={(item) =>
+                      item && (
+                        <Box>
+                          <Text
+                            as="div"
+                            fontSize="fontSize30"
+                            fontWeight="colorTextWeakfontWeightSemibold"
+                            lineHeight="lineHeight10"
+                          >
+                            {item.templateName}
+                          </Text>
+                          <Text
+                            as="div"
+                            fontSize="fontSize20"
+                            color="colorTextWeak"
+                            lineHeight="lineHeight10"
+                          >
+                            {item.message}
+                          </Text>
+                        </Box>
+                      )
+                    }
                     setInputItems={(inputValue) => {
+                      const value = unidecode(inputValue.toLowerCase());
+
                       this.setState({
-                        inputItems: this.state.templates.filter((item) =>
-                          item.toLowerCase().includes(inputValue.toLowerCase())
-                        ),
+                        inputItems: this.state.templates.filter((item) => {
+                          const name = unidecode(
+                            item.templateName.toLowerCase()
+                          );
+                          const message = unidecode(item.message.toLowerCase());
+
+                          return (
+                            name.includes(value) || message.includes(value)
+                          );
+                        }),
                       });
                     }}
                     loading={this.state.loading}
@@ -281,7 +326,8 @@ class OutboundWaDialog extends React.Component {
                     onSelectedItemChange={(changes) => {
                       if (changes.selectedItem != null) {
                         const templateInputs = {};
-                        const selectedTemplate = changes.selectedItem;
+                        const item = changes.selectedItem;
+                        const selectedTemplate = item.message;
 
                         [
                           ...selectedTemplate.matchAll(/\{\{([0-9]+)\}\}/g),
