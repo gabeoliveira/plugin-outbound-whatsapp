@@ -1,10 +1,10 @@
 import React from 'react';
 import { VERSION } from '@twilio/flex-ui';
 import { FlexPlugin } from '@twilio/flex-plugin';
-import { CustomizationProvider } from '@twilio-paste/core/customization';
 import NewWaTaskButton from './components/NewWaTaskButton';
 import OutboundWaDialog from './components/OutboundWaDialog/OutboundWaDialog';
 import CannedResponses from './components/CannedResponses/CannedResponses';
+import EvoluServicesThemeProvider from './themes/EvoluServicesThemeProvider';
 
 import reducers, { namespace } from './states';
 import EditCannedResponses from './components/CannedResponses/EditCannedResponses';
@@ -27,24 +27,7 @@ export default class OutboundWhatsappPlugin extends FlexPlugin {
     this.registerReducers(manager);
 
     flex.setProviders({
-      CustomProvider: (RootComponent) => (props) => {
-        const pasteProviderProps = {
-          baseTheme: props.theme?.isLight ? 'default' : 'dark',
-          theme: props.theme?.tokens,
-          style: { minWidth: '100%', height: '100%' },
-          elements: {
-            MAIN_HEADER_MENU_BUTTON: {
-              'box-shadow': 'none !important',
-            },
-          },
-        };
-
-        return (
-          <CustomizationProvider {...pasteProviderProps}>
-            <RootComponent {...props} />
-          </CustomizationProvider>
-        );
-      },
+      CustomProvider: EvoluServicesThemeProvider,
     });
 
     if (manager.user.roles.includes('admin')) {

@@ -66,6 +66,7 @@ const AutoCompleteTemplate = (props) => {
         disabled={props.loading}
         autocomplete
         labelText="Template"
+        element="COMBOBOX_MODAL"
         selectedItem={props.selectedItem}
         itemToString={
           props.itemToString || ((item) => (item ? String(item) : null))
