@@ -6,18 +6,10 @@ const { Headers } = fetch;
 const { URLSearchParams } = require('url');
 
 exports.handler = TokenValidator(async (context, event, callback) => {
-  const {
-    ACCOUNT_SID, 
-    AUTH_TOKEN,
-    TWILIO_API_READ_TEMPLATES_URL
-  } = context;
+  const { ACCOUNT_SID, AUTH_TOKEN, TWILIO_API_READ_TEMPLATES_URL } = context;
 
-  const {
-    pageSize,
-    page,
-    pageToken
-  } = event;
-  
+  const { pageSize, page, pageToken } = event;
+
   const response = new Twilio.Response();
   response.appendHeader('Access-Control-Allow-Origin', '*');
   response.appendHeader('Access-Control-Allow-Methods', 'OPTIONS, POST, GET');
@@ -26,8 +18,11 @@ exports.handler = TokenValidator(async (context, event, callback) => {
 
   try {
     const headers = new Headers();
-    headers.append('Authorization', 'Basic ' + base64.encode(ACCOUNT_SID + ":" + AUTH_TOKEN));
-    
+    headers.append(
+      'Authorization',
+      'Basic ' + base64.encode(ACCOUNT_SID + ':' + AUTH_TOKEN)
+    );
+
     const params = new URLSearchParams();
     if (pageSize) {
       params.append('PageSize', pageSize);
@@ -45,13 +40,13 @@ exports.handler = TokenValidator(async (context, event, callback) => {
     const resp = await fetch(requestUrl, { method: 'GET', headers });
     const body = await resp.json();
 
-    response.setStatusCode(200);
+    response.setStatusCode(resp.status);
     response.setBody(body);
     console.log(response);
-    return callback(null, response);  
+    return callback(null, response);
   } catch (error) {
     console.error(error);
-    response.setStatusCode(error && error.status || 500);
+    response.setStatusCode((error && error.status) || 500);
     response.setBody(error);
     return callback(null, response);
   }

@@ -28,9 +28,7 @@ export default class ApiService {
           // request is delayed by a random number which grows with the number of retries
           if (error.status === 429 && attempts < 10) {
             await delay(random(100, 750) + attempts * 100);
-            return (
-              (await this.fetchJsonWithReject) < T > (url, config, attempts + 1)
-            );
+            return await this.fetchJsonWithReject(url, config, attempts + 1);
           }
           return error.json().then((response) => {
             throw response;

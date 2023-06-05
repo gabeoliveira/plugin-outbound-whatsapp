@@ -7,7 +7,7 @@ import { v4 as uuidv4 } from 'uuid';
 import unidecode from 'unidecode';
 
 import taskService from '../../services/TaskService';
-import twilioService from '../../services/TwilioService';
+import getTemplatesService from '../../services/GetTemplatesService';
 import OutboundSenderIdSelector from '../OutboundSenderIdSelector/OuboundSenderIdSelector';
 
 // import OutboundWhatsappPlugin from './OutboundWhatsappPlugin';
@@ -112,7 +112,7 @@ class OutboundWaDialog extends React.Component {
     };
   }
 
-  componentDidMount() {
+  async componentDidMount() {
     console.log('modal did mount');
     document.addEventListener(
       'waModalControlOpen',
@@ -122,16 +122,18 @@ class OutboundWaDialog extends React.Component {
       false
     );
 
-    twilioService.getTemplates(250).then((templates) => {
-      const items = templates.map((t) => ({
+    const templates = await getTemplatesService.getAllTemplates();
+    const items = templates
+      .filter((t) => t.languages[0].status === 'approved')
+      .map((t) => ({
         message: t.languages[0].content,
         templateName: t.template_name,
       }));
-      this.setState({
-        templates: items,
-        inputItems: items,
-        loading: false,
-      });
+
+    this.setState({
+      templates: items,
+      inputItems: items,
+      loading: false,
     });
   }
 
