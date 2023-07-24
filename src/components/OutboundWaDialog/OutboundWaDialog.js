@@ -1,16 +1,13 @@
-import { useCombobox } from 'downshift';
+import React, { useState, useEffect } from 'react';
 import { withTheme, Actions } from '@twilio/flex-ui';
 import { CloseIcon } from '@twilio-paste/icons/esm/CloseIcon';
 import { SearchIcon } from '@twilio-paste/icons/esm/SearchIcon';
 import { Toaster } from '@twilio-paste/toast';
 import { v4 as uuidv4 } from 'uuid';
-import unidecode from 'unidecode';
 
 import taskService from '../../services/TaskService';
 import getTemplatesService from '../../services/GetTemplatesService';
 import OutboundSenderIdSelector from '../OutboundSenderIdSelector/OuboundSenderIdSelector';
-
-// import OutboundWhatsappPlugin from './OutboundWhatsappPlugin';
 
 import {
   Combobox,
@@ -31,60 +28,79 @@ import {
 } from '@twilio-paste/core';
 import Handlebars from 'handlebars';
 
-const AutoCompleteTemplate = (props) => {
+const AutoCompleteCombobox = (props) => {
+  const maxDisplayedItems = 20;
   const [value, setValue] = React.useState('');
+  const [displayItems, setDisplayItems] = useState(
+    props.inputItems.slice(0, maxDisplayedItems)
+  );
 
-  const clear = () => {
-    props.setSelectedItem('');
-    setValue('');
-    reset();
+  const handleInputValueChange = (inputValue) => {
+    if (inputValue !== undefined) {
+      const valueLowerCase = value.toLowerCase();
+
+      const filteredItems = props.inputItems.filter(
+        (item) =>
+          item.templateName.toLowerCase().includes(valueLowerCase) ||
+          item.message.toLowerCase().includes(valueLowerCase)
+      );
+      setDisplayItems(filteredItems.slice(0, maxDisplayedItems));
+      setValue(inputValue);
+    }
   };
 
-  const { reset, ...state } = useCombobox({
-    items: props.inputItems,
-    onSelectedItemChange: props.onSelectedItemChange,
-    onInputValueChange: ({ inputValue }) => {
-      if (inputValue !== undefined) {
-        props.setInputItems(inputValue);
-        setValue(inputValue);
-      }
-
-      if (inputValue === '') {
-        clear();
-      }
-    },
-    inputValue: value,
-    selectedItem: props.selectedItem,
-  });
+  const handleClearSelection = () => {
+    setValue('');
+    props.clear('');
+    props.setSelectedItem('');
+    setDisplayItems(props.inputItems.slice(0, maxDisplayedItems));
+  };
 
   return (
     <>
       <Combobox
-        state={{ ...state, reset }}
-        items={props.inputItems}
-        required
-        disabled={props.loading}
         autocomplete
-        labelText="Template"
-        element="COMBOBOX_MODAL"
+        items={displayItems}
+        inputValue={value}
         selectedItem={props.selectedItem}
-        itemToString={
-          props.itemToString || ((item) => (item ? String(item) : null))
-        }
-        optionTemplate={
-          props.optionTemplate || ((item) => JSON.stringify(item))
-        }
+        labelText="Template"
+        required
         insertAfter={
-          <Button variant="link" size="reset" onClick={clear}>
+          <Button variant="link" size="reset" onClick={handleClearSelection}>
             {!!value ? (
               <CloseIcon decorative={false} title="Limpar" />
-            ) : props.loading ? (
-              <Spinner size="sizeIcon20" decorative={false} title="Loading" />
             ) : (
               <SearchIcon decorative={false} title="Buscar" />
             )}
           </Button>
         }
+        optionTemplate={(item) => {
+          return (
+            <Box>
+              <Text
+                as="div"
+                fontSize="fontSize30"
+                fontWeight="colorTextWeakfontWeightSemibold"
+                lineHeight="lineHeight10"
+              >
+                {item.templateName}
+              </Text>
+              <Text
+                as="div"
+                fontSize="fontSize20"
+                color="colorTextWeak"
+                lineHeight="lineHeight10"
+              >
+                {item.message}
+              </Text>
+            </Box>
+          );
+        }}
+        itemToString={(item) => (item ? item.templateName : '')}
+        onInputValueChange={({ inputValue }) => {
+          handleInputValueChange(inputValue);
+        }}
+        onSelectedItemChange={props.onSelectedItemChange}
       />
     </>
   );
@@ -123,13 +139,13 @@ class OutboundWaDialog extends React.Component {
     );
 
     const templates = await getTemplatesService.getAllTemplates();
+
     const items = templates
       .filter((t) => t.languages[0].status === 'approved')
       .map((t) => ({
         message: t.languages[0].content,
         templateName: t.template_name,
       }));
-
     this.setState({
       templates: items,
       inputItems: items,
@@ -156,7 +172,6 @@ class OutboundWaDialog extends React.Component {
       toNumber: '',
       fromNumber: null,
       selectedTemplate: '',
-      inputItems: [],
       templateInputs: {},
       message: '',
     });
@@ -278,60 +293,22 @@ class OutboundWaDialog extends React.Component {
                 </Box>
 
                 <Box>
-                  <AutoCompleteTemplate
+                  <AutoCompleteCombobox
                     inputItems={this.state.inputItems}
-                    itemToString={(item) =>
-                      item ? String(item.templateName) : ''
-                    }
-                    optionTemplate={(item) =>
-                      item && (
-                        <Box>
-                          <Text
-                            as="div"
-                            fontSize="fontSize30"
-                            fontWeight="colorTextWeakfontWeightSemibold"
-                            lineHeight="lineHeight10"
-                          >
-                            {item.templateName}
-                          </Text>
-                          <Text
-                            as="div"
-                            fontSize="fontSize20"
-                            color="colorTextWeak"
-                            lineHeight="lineHeight10"
-                          >
-                            {item.message}
-                          </Text>
-                        </Box>
-                      )
-                    }
-                    setInputItems={(inputValue) => {
-                      const value = unidecode(inputValue.toLowerCase());
-
-                      this.setState({
-                        inputItems: this.state.templates.filter((item) => {
-                          const name = unidecode(
-                            item.templateName.toLowerCase()
-                          );
-                          const message = unidecode(item.message.toLowerCase());
-
-                          return (
-                            name.includes(value) || message.includes(value)
-                          );
-                        }),
-                      });
-                    }}
                     loading={this.state.loading}
                     selectedItem={this.state.selectedTemplate}
+                    clear={() =>
+                      this.setState({ selectedTemplate: '', message: '' })
+                    }
                     setSelectedItem={(item) =>
                       this.setState({ selectedTemplate: '' })
                     }
+                    disabledItems={this.state.inputItems.slice(0, 5)}
                     onSelectedItemChange={(changes) => {
-                      if (changes.selectedItem != null) {
+                      if (changes.selectedItem !== null) {
                         const templateInputs = {};
                         const item = changes.selectedItem;
                         const selectedTemplate = item.message;
-
                         [
                           ...selectedTemplate.matchAll(/\{\{([0-9]+)\}\}/g),
                         ].forEach(([value, name]) => {
