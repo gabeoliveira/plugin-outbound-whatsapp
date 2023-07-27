@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { withTheme, Actions } from '@twilio/flex-ui';
 import { CloseIcon } from '@twilio-paste/icons/esm/CloseIcon';
 import { SearchIcon } from '@twilio-paste/icons/esm/SearchIcon';
 import { Toaster } from '@twilio-paste/toast';
 import { v4 as uuidv4 } from 'uuid';
+import unidecode from 'unidecode';
 
 import taskService from '../../services/TaskService';
 import getTemplatesService from '../../services/GetTemplatesService';
@@ -29,31 +30,36 @@ import {
 import Handlebars from 'handlebars';
 
 const AutoCompleteCombobox = (props) => {
-  const maxDisplayedItems = 20;
-  const [value, setValue] = React.useState('');
+  const [value, setValue] = useState('');
   const [displayItems, setDisplayItems] = useState(
-    props.inputItems.slice(0, maxDisplayedItems)
+    props.inputItems.slice(0, props.maxDisplayedItems)
   );
 
   const handleInputValueChange = (inputValue) => {
     if (inputValue !== undefined) {
-      const valueLowerCase = value.toLowerCase();
+      const valueLowerCase = unidecode(value.toLowerCase());
 
-      const filteredItems = props.inputItems.filter(
-        (item) =>
-          item.templateName.toLowerCase().includes(valueLowerCase) ||
-          item.message.toLowerCase().includes(valueLowerCase)
-      );
-      setDisplayItems(filteredItems.slice(0, maxDisplayedItems));
+      const filteredItems = props.inputItems.filter((item) => {
+        const templateNameLowerCase = unidecode(
+          item.templateName.toLowerCase()
+        );
+        const messageLowerCase = unidecode(item.message.toLowerCase());
+
+        return (
+          templateNameLowerCase.includes(value) ||
+          messageLowerCase.includes(value)
+        );
+      });
+      setDisplayItems(filteredItems.slice(0, props.maxDisplayedItems));
       setValue(inputValue);
     }
   };
 
   const handleClearSelection = () => {
     setValue('');
-    props.clear('');
+    props.clear();
     props.setSelectedItem('');
-    setDisplayItems(props.inputItems.slice(0, maxDisplayedItems));
+    setDisplayItems(props.inputItems.slice(0, props.maxDisplayedItems));
   };
 
   return (
@@ -64,11 +70,14 @@ const AutoCompleteCombobox = (props) => {
         inputValue={value}
         selectedItem={props.selectedItem}
         labelText="Template"
+        element="COMBOBOX_MODAL"
         required
         insertAfter={
           <Button variant="link" size="reset" onClick={handleClearSelection}>
             {!!value ? (
               <CloseIcon decorative={false} title="Limpar" />
+            ) : props.loading ? (
+              <Spinner size="sizeIcon20" decorative={false} title="Loading" />
             ) : (
               <SearchIcon decorative={false} title="Buscar" />
             )}
@@ -297,13 +306,13 @@ class OutboundWaDialog extends React.Component {
                     inputItems={this.state.inputItems}
                     loading={this.state.loading}
                     selectedItem={this.state.selectedTemplate}
+                    maxDisplayedItems={20}
                     clear={() =>
                       this.setState({ selectedTemplate: '', message: '' })
                     }
                     setSelectedItem={(item) =>
                       this.setState({ selectedTemplate: '' })
                     }
-                    disabledItems={this.state.inputItems.slice(0, 5)}
                     onSelectedItemChange={(changes) => {
                       if (changes.selectedItem !== null) {
                         const templateInputs = {};
