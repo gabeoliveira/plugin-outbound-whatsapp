@@ -65,6 +65,7 @@ const AutoCompleteCombobox = (props) => {
   return (
     <>
       <Combobox
+        disabled={props.loading}
         autocomplete
         items={displayItems}
         inputValue={value}
