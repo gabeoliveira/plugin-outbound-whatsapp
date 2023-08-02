@@ -37,7 +37,7 @@ const AutoCompleteCombobox = (props) => {
 
   const handleInputValueChange = (inputValue) => {
     if (inputValue !== undefined) {
-      const valueLowerCase = unidecode(value.toLowerCase());
+      const valueLowerCase = unidecode(inputValue.toLowerCase());
 
       const filteredItems = props.inputItems.filter((item) => {
         const templateNameLowerCase = unidecode(
@@ -46,8 +46,8 @@ const AutoCompleteCombobox = (props) => {
         const messageLowerCase = unidecode(item.message.toLowerCase());
 
         return (
-          templateNameLowerCase.includes(value) ||
-          messageLowerCase.includes(value)
+          templateNameLowerCase.includes(valueLowerCase) ||
+          messageLowerCase.includes(valueLowerCase)
         );
       });
       setDisplayItems(filteredItems.slice(0, props.maxDisplayedItems));
