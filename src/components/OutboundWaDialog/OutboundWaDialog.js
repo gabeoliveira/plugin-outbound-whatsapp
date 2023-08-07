@@ -31,9 +31,13 @@ import Handlebars from 'handlebars';
 
 const AutoCompleteCombobox = (props) => {
   const [value, setValue] = useState('');
-  const [displayItems, setDisplayItems] = useState(
-    props.inputItems.slice(0, props.maxDisplayedItems)
-  );
+  const [displayItems, setDisplayItems] = useState([
+    ...props.inputItems.slice(0, props.maxDisplayedItems),
+    {
+      templateName: `Exibindo os primeiros ${props.maxDisplayedItems} resultados`,
+      message: '',
+    },
+  ]);
 
   const handleInputValueChange = (inputValue) => {
     if (inputValue !== undefined) {
@@ -50,7 +54,22 @@ const AutoCompleteCombobox = (props) => {
           messageLowerCase.includes(valueLowerCase)
         );
       });
-      setDisplayItems(filteredItems.slice(0, props.maxDisplayedItems));
+
+      setDisplayItems([
+        ...filteredItems.slice(0, props.maxDisplayedItems),
+        {
+          templateName:
+            filteredItems.length === 0
+              ? `Nenhum resultado encontrado contendo "${inputValue}"`
+              : filteredItems.length === 1
+              ? `Exibindo um resultado encontrado contendo "${inputValue}"`
+              : filteredItems.length > props.maxDisplayedItems
+              ? `Exibindo os primeiros ${props.maxDisplayedItems} resultados contendo "${inputValue}"`
+              : `Exibindo ${filteredItems.length} resultados contendo "${inputValue}"`,
+          message: '',
+        },
+      ]);
+
       setValue(inputValue);
     }
   };
@@ -71,7 +90,11 @@ const AutoCompleteCombobox = (props) => {
         inputValue={value}
         selectedItem={props.selectedItem}
         labelText="Template"
-        element="COMBOBOX_MODAL"
+        element="COMBOBOX_MODAL_LISTBOX"
+        disabledItems={displayItems.slice(
+          displayItems.length - 1,
+          displayItems.length
+        )}
         required
         insertAfter={
           <Button variant="link" size="reset" onClick={handleClearSelection}>
@@ -241,7 +264,12 @@ class OutboundWaDialog extends React.Component {
 
     return (
       <>
-        <Modal isOpen={this.state.open} onDismiss={this.cancelForm} size="wide">
+        <Modal
+          ariaLabelledby="outboundWhatsapp"
+          isOpen={this.state.open}
+          onDismiss={this.cancelForm}
+          size="wide"
+        >
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -377,7 +405,7 @@ class OutboundWaDialog extends React.Component {
                 </Box>
               </Stack>
             </ModalBody>
-            <ModalFooter>
+            <ModalFooter element="MODAL_FOOTER">
               <ModalFooterActions>
                 <Button
                   variant="secondary"
