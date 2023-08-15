@@ -6,16 +6,21 @@ const EvoluServicesThemeProvider = (RootComponent) => (props) => {
     theme: props.theme?.tokens,
     style: { minWidth: '100%', height: '100%' },
     elements: {
-      MAIN_HEADER_MENU_BUTTON: {
+      MODAL_HEADER: {
         'box-shadow': 'none !important',
+        'border-bottom': '1px solid rgb(57, 71, 98)',
+        padding: '1rem',
       },
       MODAL_BODY: {
-        'max-height': 'calc(100vh - 211px)',
+        'max-height': 'calc(100vh - 199px)',
+        padding: '1rem 1rem 1.25rem',
+        'border-bottom': '1px solid rgb(57, 71, 98)',
+      },
+      MODAL_FOOTER: {
+        padding: '1rem',
       },
       COMBOBOX_MODAL_LISTBOX: {
-        position: 'fixed',
         'max-height': '200px',
-        'max-width': 'calc(100% - 32px)',
       },
     },
   };

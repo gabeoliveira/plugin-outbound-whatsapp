@@ -100,6 +100,7 @@ export default function EditCannedResponses() {
               placeholder="Pesquisar respostas..."
               autocomplete
               initialIsOpen
+              labelText=""
               items={filteredResponses}
               inputValue={responsesFilterInput}
               optionTemplate={(item) => (
@@ -227,7 +228,7 @@ export default function EditCannedResponses() {
           )}
           <Toaster {...toaster} />
         </ModalBody>
-        <ModalFooter>
+        <ModalFooter element="MODAL_FOOTER">
           <ModalFooterActions>
             <Button
               variant="secondary"

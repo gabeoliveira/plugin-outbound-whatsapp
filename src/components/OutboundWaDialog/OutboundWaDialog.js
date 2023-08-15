@@ -1,4 +1,4 @@
-import { useCombobox } from 'downshift';
+import React, { useState } from 'react';
 import { withTheme, Actions } from '@twilio/flex-ui';
 import { CloseIcon } from '@twilio-paste/icons/esm/CloseIcon';
 import { SearchIcon } from '@twilio-paste/icons/esm/SearchIcon';
@@ -9,8 +9,6 @@ import unidecode from 'unidecode';
 import taskService from '../../services/TaskService';
 import getTemplatesService from '../../services/GetTemplatesService';
 import OutboundSenderIdSelector from '../OutboundSenderIdSelector/OuboundSenderIdSelector';
-
-// import OutboundWhatsappPlugin from './OutboundWhatsappPlugin';
 
 import {
   Combobox,
@@ -31,51 +29,75 @@ import {
 } from '@twilio-paste/core';
 import Handlebars from 'handlebars';
 
-const AutoCompleteTemplate = (props) => {
-  const [value, setValue] = React.useState('');
+const AutoCompleteCombobox = (props) => {
+  const [value, setValue] = useState('');
+  const [displayItems, setDisplayItems] = useState([
+    ...props.inputItems.slice(0, props.maxDisplayedItems),
+    {
+      templateName: `Exibindo os primeiros ${props.maxDisplayedItems} resultados`,
+      message: '',
+    },
+  ]);
 
-  const clear = () => {
-    props.setSelectedItem('');
-    setValue('');
-    reset();
+  const handleInputValueChange = (inputValue) => {
+    if (inputValue !== undefined) {
+      const valueLowerCase = unidecode(inputValue.toLowerCase());
+
+      const filteredItems = props.inputItems.filter((item) => {
+        const templateNameLowerCase = unidecode(
+          item.templateName.toLowerCase()
+        );
+        const messageLowerCase = unidecode(item.message.toLowerCase());
+
+        return (
+          templateNameLowerCase.includes(valueLowerCase) ||
+          messageLowerCase.includes(valueLowerCase)
+        );
+      });
+
+      setDisplayItems([
+        ...filteredItems.slice(0, props.maxDisplayedItems),
+        {
+          templateName:
+            filteredItems.length === 0
+              ? `Nenhum resultado encontrado contendo "${inputValue}"`
+              : filteredItems.length === 1
+              ? `Exibindo um resultado encontrado contendo "${inputValue}"`
+              : filteredItems.length > props.maxDisplayedItems
+              ? `Exibindo os primeiros ${props.maxDisplayedItems} resultados contendo "${inputValue}"`
+              : `Exibindo ${filteredItems.length} resultados contendo "${inputValue}"`,
+          message: '',
+        },
+      ]);
+
+      setValue(inputValue);
+    }
   };
 
-  const { reset, ...state } = useCombobox({
-    items: props.inputItems,
-    onSelectedItemChange: props.onSelectedItemChange,
-    onInputValueChange: ({ inputValue }) => {
-      if (inputValue !== undefined) {
-        props.setInputItems(inputValue);
-        setValue(inputValue);
-      }
-
-      if (inputValue === '') {
-        clear();
-      }
-    },
-    inputValue: value,
-    selectedItem: props.selectedItem,
-  });
+  const handleClearSelection = () => {
+    setValue('');
+    props.clear();
+    props.setSelectedItem('');
+    setDisplayItems(props.inputItems.slice(0, props.maxDisplayedItems));
+  };
 
   return (
     <>
       <Combobox
-        state={{ ...state, reset }}
-        items={props.inputItems}
-        required
         disabled={props.loading}
         autocomplete
-        labelText="Template"
-        element="COMBOBOX_MODAL"
+        items={displayItems}
+        inputValue={value}
         selectedItem={props.selectedItem}
-        itemToString={
-          props.itemToString || ((item) => (item ? String(item) : null))
-        }
-        optionTemplate={
-          props.optionTemplate || ((item) => JSON.stringify(item))
-        }
+        labelText="Template"
+        element="COMBOBOX_MODAL_LISTBOX"
+        disabledItems={displayItems.slice(
+          displayItems.length - 1,
+          displayItems.length
+        )}
+        required
         insertAfter={
-          <Button variant="link" size="reset" onClick={clear}>
+          <Button variant="link" size="reset" onClick={handleClearSelection}>
             {!!value ? (
               <CloseIcon decorative={false} title="Limpar" />
             ) : props.loading ? (
@@ -85,6 +107,33 @@ const AutoCompleteTemplate = (props) => {
             )}
           </Button>
         }
+        optionTemplate={(item) => {
+          return (
+            <Box>
+              <Text
+                as="div"
+                fontSize="fontSize30"
+                fontWeight="colorTextWeakfontWeightSemibold"
+                lineHeight="lineHeight10"
+              >
+                {item.templateName}
+              </Text>
+              <Text
+                as="div"
+                fontSize="fontSize20"
+                color="colorTextWeak"
+                lineHeight="lineHeight10"
+              >
+                {item.message}
+              </Text>
+            </Box>
+          );
+        }}
+        itemToString={(item) => (item ? item.templateName : '')}
+        onInputValueChange={({ inputValue }) => {
+          handleInputValueChange(inputValue);
+        }}
+        onSelectedItemChange={props.onSelectedItemChange}
       />
     </>
   );
@@ -123,13 +172,13 @@ class OutboundWaDialog extends React.Component {
     );
 
     const templates = await getTemplatesService.getAllTemplates();
+
     const items = templates
       .filter((t) => t.languages[0].status === 'approved')
       .map((t) => ({
         message: t.languages[0].content,
         templateName: t.template_name,
       }));
-
     this.setState({
       templates: items,
       inputItems: items,
@@ -156,7 +205,6 @@ class OutboundWaDialog extends React.Component {
       toNumber: '',
       fromNumber: null,
       selectedTemplate: '',
-      inputItems: [],
       templateInputs: {},
       message: '',
     });
@@ -216,7 +264,12 @@ class OutboundWaDialog extends React.Component {
 
     return (
       <>
-        <Modal isOpen={this.state.open} onDismiss={this.cancelForm} size="wide">
+        <Modal
+          ariaLabelledby="outboundWhatsapp"
+          isOpen={this.state.open}
+          onDismiss={this.cancelForm}
+          size="wide"
+        >
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -278,60 +331,22 @@ class OutboundWaDialog extends React.Component {
                 </Box>
 
                 <Box>
-                  <AutoCompleteTemplate
+                  <AutoCompleteCombobox
                     inputItems={this.state.inputItems}
-                    itemToString={(item) =>
-                      item ? String(item.templateName) : ''
-                    }
-                    optionTemplate={(item) =>
-                      item && (
-                        <Box>
-                          <Text
-                            as="div"
-                            fontSize="fontSize30"
-                            fontWeight="colorTextWeakfontWeightSemibold"
-                            lineHeight="lineHeight10"
-                          >
-                            {item.templateName}
-                          </Text>
-                          <Text
-                            as="div"
-                            fontSize="fontSize20"
-                            color="colorTextWeak"
-                            lineHeight="lineHeight10"
-                          >
-                            {item.message}
-                          </Text>
-                        </Box>
-                      )
-                    }
-                    setInputItems={(inputValue) => {
-                      const value = unidecode(inputValue.toLowerCase());
-
-                      this.setState({
-                        inputItems: this.state.templates.filter((item) => {
-                          const name = unidecode(
-                            item.templateName.toLowerCase()
-                          );
-                          const message = unidecode(item.message.toLowerCase());
-
-                          return (
-                            name.includes(value) || message.includes(value)
-                          );
-                        }),
-                      });
-                    }}
                     loading={this.state.loading}
                     selectedItem={this.state.selectedTemplate}
+                    maxDisplayedItems={20}
+                    clear={() =>
+                      this.setState({ selectedTemplate: '', message: '' })
+                    }
                     setSelectedItem={(item) =>
                       this.setState({ selectedTemplate: '' })
                     }
                     onSelectedItemChange={(changes) => {
-                      if (changes.selectedItem != null) {
+                      if (changes.selectedItem !== null) {
                         const templateInputs = {};
                         const item = changes.selectedItem;
                         const selectedTemplate = item.message;
-
                         [
                           ...selectedTemplate.matchAll(/\{\{([0-9]+)\}\}/g),
                         ].forEach(([value, name]) => {
@@ -390,7 +405,7 @@ class OutboundWaDialog extends React.Component {
                 </Box>
               </Stack>
             </ModalBody>
-            <ModalFooter>
+            <ModalFooter element="MODAL_FOOTER">
               <ModalFooterActions>
                 <Button
                   variant="secondary"
