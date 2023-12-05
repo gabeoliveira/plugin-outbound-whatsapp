@@ -30,7 +30,10 @@ export default class OutboundWhatsappPlugin extends FlexPlugin {
       CustomProvider: EvoluServicesThemeProvider,
     });
 
-    if (manager.user.roles.includes('admin')) {
+    if (
+      manager.user.roles.includes('admin') ||
+      manager.user.roles.includes('supervisor')
+    ) {
       flex.MainHeader.Content.add(
         <EditCannedResponses key="edit-canned-responses" />,
         { sortOrder: -100, align: 'end' }
